@@ -90,7 +90,7 @@ func (a *Config) GetMapTokens() map[string]string {
 func NewMiddleware(cfg *Config, LOGGER log.Logger) middleware.Middleware {
 	LOG := log.NewHelper(LOGGER)
 	LOG.Infof(
-		"new check_auth enable=%v field=%v tokens=%v include=%v operations=%v",
+		"new check_auth middleware enable=%v field=%v tokens=%v include=%v operations=%v",
 		cfg.IsEnable(),
 		cfg.field,
 		len(cfg.tokens),

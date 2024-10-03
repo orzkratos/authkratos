@@ -51,7 +51,7 @@ func (a *Config) GetField() string {
 func NewMiddleware(cfg *Config, LOGGER log.Logger) middleware.Middleware {
 	LOG := log.NewHelper(LOGGER)
 	LOG.Infof(
-		"new check_auth enable=%v field=%v simple=x include=%v operations=%v",
+		"new check_auth middleware enable=%v field=%v simple=x include=%v operations=%v",
 		cfg.IsEnable(),
 		cfg.field,
 		cfg.selectPath.SelectSide,
