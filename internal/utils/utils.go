@@ -21,7 +21,7 @@ func NewUUID() string {
 	return hex.EncodeToString(uux[:])
 }
 
-func MpKB[K comparable](a []K) (mp map[K]bool) {
+func MapKxB[K comparable](a []K) (mp map[K]bool) {
 	mp = make(map[K]bool, len(a))
 	for _, v := range a {
 		mp[v] = true
