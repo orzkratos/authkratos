@@ -30,8 +30,8 @@ func NewConfig(field string, check CheckFunc, selectPath *authkratospath.SelectP
 	}
 }
 
-func (a *Config) SetEnable(v bool) {
-	a.enable = v
+func (a *Config) SetEnable(enable bool) {
+	a.enable = enable
 }
 
 func (a *Config) IsEnable() bool {

@@ -15,7 +15,7 @@ import (
 type Config struct {
 	rateLimitBottle *redis_rate.Limiter
 	rule            *redis_rate.Limit
-	ucGetUniqueCode func(ctx context.Context) string
+	parseUniqueCode func(ctx context.Context) string
 	selectPath      *authkratospath.SelectPath
 	enable          bool
 }
@@ -23,20 +23,20 @@ type Config struct {
 func NewConfig(
 	rateLimitBottle *redis_rate.Limiter,
 	rule *redis_rate.Limit,
-	ucGetUniqueCode func(ctx context.Context) string,
+	parseUniqueCode func(ctx context.Context) string,
 	selectPath *authkratospath.SelectPath,
 ) *Config {
 	return &Config{
 		rateLimitBottle: rateLimitBottle,
 		rule:            rule,
-		ucGetUniqueCode: ucGetUniqueCode,
+		parseUniqueCode: parseUniqueCode,
 		selectPath:      selectPath,
 		enable:          true,
 	}
 }
 
-func (a *Config) SetEnable(v bool) {
-	a.enable = v
+func (a *Config) SetEnable(enable bool) {
+	a.enable = enable
 }
 
 func (a *Config) IsEnable() bool {
@@ -88,7 +88,7 @@ func middlewareFunc(cfg *Config, LOGGER log.Logger) middleware.Middleware {
 				return handleFunc(ctx, req)
 			}
 
-			uck := cfg.ucGetUniqueCode(ctx)
+			uck := cfg.parseUniqueCode(ctx)
 
 			rls, err := cfg.rateLimitBottle.Allow(ctx, uck, rateLimitRule)
 			if err != nil {

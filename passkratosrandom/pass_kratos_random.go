@@ -29,8 +29,8 @@ func NewConfig(
 	}
 }
 
-func (a *Config) SetEnable(v bool) {
-	a.enable = v
+func (a *Config) SetEnable(enable bool) {
+	a.enable = enable
 }
 
 func (a *Config) IsEnable() bool {
