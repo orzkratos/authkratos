@@ -88,8 +88,8 @@ func middlewareFunc(cfg *Config, LOGGER log.Logger) middleware.Middleware {
 				return handleFunc(ctx, req)
 			}
 			if tp, ok := transport.FromServerContext(ctx); ok {
-				tx := apm.TransactionFromContext(ctx)
-				sp := tx.StartSpan("auth_kratos_simple", "auth", nil)
+				apmTx := apm.TransactionFromContext(ctx)
+				sp := apmTx.StartSpan("auth_kratos_simple", "auth", nil)
 				defer sp.End()
 
 				token := tp.RequestHeader().Get(cfg.field)

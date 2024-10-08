@@ -140,8 +140,8 @@ func middlewareFunc(cfg *Config, LOGGER log.Logger) middleware.Middleware {
 				return handleFunc(ctx, req)
 			}
 			if tp, ok := transport.FromServerContext(ctx); ok {
-				tx := apm.TransactionFromContext(ctx)
-				sp := tx.StartSpan("check_auth", "auth", nil)
+				apmTx := apm.TransactionFromContext(ctx)
+				sp := apmTx.StartSpan("check_auth", "auth", nil)
 				defer sp.End()
 
 				var token = tp.RequestHeader().Get(cfg.field)
