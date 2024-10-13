@@ -8,7 +8,7 @@ import (
 	"github.com/go-kratos/kratos/v2/middleware/ratelimit"
 	"github.com/go-kratos/kratos/v2/middleware/selector"
 	"github.com/go-redis/redis_rate/v10"
-	"github.com/orzkratos/authkratos/authkratospath"
+	"github.com/orzkratos/authkratos/authkratosroutes"
 	"github.com/yyle88/erero"
 )
 
@@ -16,7 +16,7 @@ type Config struct {
 	rateLimitBottle *redis_rate.Limiter
 	rule            *redis_rate.Limit
 	parseUniqueCode func(ctx context.Context) string
-	selectPath      *authkratospath.SelectPath
+	selectPath      *authkratosroutes.SelectPath
 	enable          bool
 }
 
@@ -24,7 +24,7 @@ func NewConfig(
 	rateLimitBottle *redis_rate.Limiter,
 	rule *redis_rate.Limit,
 	parseUniqueCode func(ctx context.Context) string,
-	selectPath *authkratospath.SelectPath,
+	selectPath *authkratosroutes.SelectPath,
 ) *Config {
 	return &Config{
 		rateLimitBottle: rateLimitBottle,

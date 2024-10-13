@@ -7,20 +7,20 @@ import (
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/middleware"
 	"github.com/go-kratos/kratos/v2/middleware/selector"
-	"github.com/orzkratos/authkratos/authkratospath"
+	"github.com/orzkratos/authkratos/authkratosroutes"
 	"github.com/orzkratos/authkratos/internal/utils"
 )
 
 type Config struct {
 	fastTimeoutGap time.Duration //快速超时的时间
-	fastOperations []authkratospath.Path
-	slowOperations []authkratospath.Path
+	fastOperations []authkratosroutes.Path
+	slowOperations []authkratosroutes.Path
 }
 
 func NewConfig(
 	fastTimeoutGap time.Duration,
-	fastOperations authkratospath.Paths,
-	slowOperations authkratospath.Paths,
+	fastOperations authkratosroutes.Paths,
+	slowOperations authkratosroutes.Paths,
 ) *Config {
 	return &Config{
 		fastTimeoutGap: fastTimeoutGap,
@@ -47,7 +47,7 @@ func matchFunc(cfg *Config, LOGGER log.Logger) selector.MatchFunc {
 	qMap := utils.MapKxB(cfg.fastOperations)
 	sMap := utils.MapKxB(cfg.slowOperations)
 	return func(ctx context.Context, operation string) bool {
-		path := authkratospath.New(operation)
+		path := authkratosroutes.New(operation)
 		if qMap[path] {
 			LOG.Debugf("operation=%s slow_fast_middleware [fast]", operation)
 			return true

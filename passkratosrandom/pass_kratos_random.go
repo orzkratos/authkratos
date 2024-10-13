@@ -9,17 +9,17 @@ import (
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/middleware"
 	"github.com/go-kratos/kratos/v2/middleware/selector"
-	"github.com/orzkratos/authkratos/authkratospath"
+	"github.com/orzkratos/authkratos/authkratosroutes"
 )
 
 type Config struct {
-	rateMap map[authkratospath.Path]float64
+	rateMap map[authkratosroutes.Path]float64
 	rate    float64
 	enable  bool
 }
 
 func NewConfig(
-	rateMap map[authkratospath.Path]float64,
+	rateMap map[authkratosroutes.Path]float64,
 	rate float64,
 ) *Config {
 	return &Config{
@@ -61,7 +61,7 @@ func matchFunc(cfg *Config, LOGGER log.Logger) selector.MatchFunc {
 			return false
 		}
 		if len(cfg.rateMap) > 0 {
-			path := authkratospath.New(operation)
+			path := authkratosroutes.New(operation)
 			if rate, ok := cfg.rateMap[path]; ok {
 				pass := rand.Float64() < rate //比如设置0.6就是有60%的概率通过
 				LOG.Debugf("operation=%s in rate_map rate_pass rate=%v pass=%v", operation, rate, pass)

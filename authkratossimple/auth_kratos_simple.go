@@ -8,20 +8,20 @@ import (
 	"github.com/go-kratos/kratos/v2/middleware"
 	"github.com/go-kratos/kratos/v2/middleware/selector"
 	"github.com/go-kratos/kratos/v2/transport"
-	"github.com/orzkratos/authkratos/authkratospath"
+	"github.com/orzkratos/authkratos/authkratosroutes"
 	"go.elastic.co/apm/v2"
 )
 
 type Config struct {
 	field      string
-	selectPath *authkratospath.SelectPath
+	selectPath *authkratosroutes.SelectPath
 	check      CheckFunc
 	enable     bool
 }
 
 type CheckFunc func(ctx context.Context, token string) (context.Context, *errors.Error)
 
-func NewConfig(field string, check CheckFunc, selectPath *authkratospath.SelectPath) *Config {
+func NewConfig(field string, check CheckFunc, selectPath *authkratosroutes.SelectPath) *Config {
 	return &Config{
 		field:      field,
 		selectPath: selectPath,

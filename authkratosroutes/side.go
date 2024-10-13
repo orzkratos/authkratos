@@ -1,4 +1,4 @@
-package authkratospath
+package authkratosroutes
 
 type SelectSide string
 
@@ -15,14 +15,14 @@ type SelectPath struct {
 func NewInclude(paths ...Path) *SelectPath {
 	return &SelectPath{
 		SelectSide: INCLUDE,
-		Operations: NewPathsMap(paths),
+		Operations: NewPathsBooMap(paths),
 	}
 }
 
 func NewExclude(paths ...Path) *SelectPath {
 	return &SelectPath{
 		SelectSide: EXCLUDE,
-		Operations: NewPathsMap(paths),
+		Operations: NewPathsBooMap(paths),
 	}
 }
 

@@ -11,7 +11,7 @@ import (
 	"github.com/go-kratos/kratos/v2/middleware"
 	"github.com/go-kratos/kratos/v2/middleware/selector"
 	"github.com/go-kratos/kratos/v2/transport"
-	"github.com/orzkratos/authkratos/authkratospath"
+	"github.com/orzkratos/authkratos/authkratosroutes"
 	"github.com/orzkratos/authkratos/internal/utils"
 	"github.com/yyle88/must"
 	"go.elastic.co/apm/v2"
@@ -19,12 +19,12 @@ import (
 
 type Config struct {
 	field      string
-	selectPath *authkratospath.SelectPath
+	selectPath *authkratosroutes.SelectPath
 	tokens     map[string]string
 	enable     bool
 }
 
-func NewConfig(field string, tokens map[string]string, selectPath *authkratospath.SelectPath) *Config {
+func NewConfig(field string, tokens map[string]string, selectPath *authkratosroutes.SelectPath) *Config {
 	return &Config{
 		field:      field,
 		selectPath: selectPath,
