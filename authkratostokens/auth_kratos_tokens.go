@@ -34,6 +34,10 @@ func NewConfig(tokenField string, tokens map[string]string, selectPath *authkrat
 	}
 }
 
+func (a *Config) GetTokenField() string {
+	return a.tokenField
+}
+
 func (a *Config) SetEnable(enable bool) {
 	a.enable = enable
 }

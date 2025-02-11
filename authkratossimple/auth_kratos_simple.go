@@ -30,6 +30,10 @@ func NewConfig(tokenField string, checkMatch CheckFunc, selectPath *authkratosro
 	}
 }
 
+func (a *Config) GetTokenField() string {
+	return a.tokenField
+}
+
 func (a *Config) SetEnable(enable bool) {
 	a.enable = enable
 }
