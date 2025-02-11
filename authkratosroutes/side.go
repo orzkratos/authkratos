@@ -15,14 +15,14 @@ type SelectPath struct {
 func NewInclude(paths ...Path) *SelectPath {
 	return &SelectPath{
 		SelectSide: INCLUDE,
-		Operations: NewPathsBooMap(paths),
+		Operations: NewPathsMap(paths),
 	}
 }
 
 func NewExclude(paths ...Path) *SelectPath {
 	return &SelectPath{
 		SelectSide: EXCLUDE,
-		Operations: NewPathsBooMap(paths),
+		Operations: NewPathsMap(paths),
 	}
 }
 

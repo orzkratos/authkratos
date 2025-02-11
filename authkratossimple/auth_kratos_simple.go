@@ -12,20 +12,20 @@ import (
 	"go.elastic.co/apm/v2"
 )
 
+type CheckFunc func(ctx context.Context, token string) (context.Context, *errors.Error)
+
 type Config struct {
-	field      string
+	tokenField string
 	selectPath *authkratosroutes.SelectPath
-	check      CheckFunc
+	checkMatch CheckFunc
 	enable     bool
 }
 
-type CheckFunc func(ctx context.Context, token string) (context.Context, *errors.Error)
-
-func NewConfig(field string, check CheckFunc, selectPath *authkratosroutes.SelectPath) *Config {
+func NewConfig(tokenField string, checkMatch CheckFunc, selectPath *authkratosroutes.SelectPath) *Config {
 	return &Config{
-		field:      field,
+		tokenField: tokenField,
 		selectPath: selectPath,
-		check:      check,
+		checkMatch: checkMatch,
 		enable:     true,
 	}
 }
@@ -34,26 +34,19 @@ func (a *Config) SetEnable(enable bool) {
 	a.enable = enable
 }
 
-func (a *Config) IsEnable() bool {
+func (a *Config) GetEnable() bool {
 	if a != nil {
-		return a.enable && a.field != ""
+		return a.enable && a.tokenField != ""
 	}
 	return false
-}
-
-func (a *Config) GetField() string {
-	if a != nil {
-		return a.field
-	}
-	return ""
 }
 
 func NewMiddleware(cfg *Config, LOGGER log.Logger) middleware.Middleware {
 	LOG := log.NewHelper(LOGGER)
 	LOG.Infof(
-		"new check_auth middleware enable=%v field=%v simple=x include=%v operations=%v",
-		cfg.IsEnable(),
-		cfg.field,
+		"new check_auth middleware enable=%v tokenField=%v simple=x include=%v operations=%v",
+		cfg.GetEnable(),
+		cfg.tokenField,
 		cfg.selectPath.SelectSide,
 		len(cfg.selectPath.Operations),
 	)
@@ -65,7 +58,7 @@ func matchFunc(cfg *Config, LOGGER log.Logger) selector.MatchFunc {
 	LOG := log.NewHelper(LOGGER)
 
 	return func(ctx context.Context, operation string) bool {
-		if !cfg.IsEnable() {
+		if !cfg.GetEnable() {
 			return false
 		}
 		match := cfg.selectPath.Match(operation)
@@ -83,8 +76,8 @@ func middlewareFunc(cfg *Config, LOGGER log.Logger) middleware.Middleware {
 
 	return func(handleFunc middleware.Handler) middleware.Handler {
 		return func(ctx context.Context, req interface{}) (interface{}, error) {
-			if !cfg.IsEnable() {
-				LOG.Infof("auth_kratos_simple: cfg.enable=false anonymous pass")
+			if !cfg.GetEnable() {
+				LOG.Infof("auth_kratos_simple: cfg.enable=false anyone can pass")
 				return handleFunc(ctx, req)
 			}
 			if tp, ok := transport.FromServerContext(ctx); ok {
@@ -92,11 +85,11 @@ func middlewareFunc(cfg *Config, LOGGER log.Logger) middleware.Middleware {
 				sp := apmTx.StartSpan("auth_kratos_simple", "auth", nil)
 				defer sp.End()
 
-				token := tp.RequestHeader().Get(cfg.field)
+				token := tp.RequestHeader().Get(cfg.tokenField)
 				if token == "" {
 					return nil, errors.Unauthorized("UNAUTHORIZED", "auth_kratos_simple: auth token is missing")
 				}
-				ctx, erk := cfg.check(ctx, token)
+				ctx, erk := cfg.checkMatch(ctx, token)
 				if erk != nil {
 					return nil, erk
 				}

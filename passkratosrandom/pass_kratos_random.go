@@ -33,7 +33,7 @@ func (a *Config) SetEnable(enable bool) {
 	a.enable = enable
 }
 
-func (a *Config) IsEnable() bool {
+func (a *Config) GetEnable() bool {
 	if a != nil {
 		return a.enable
 	}
@@ -45,7 +45,7 @@ func NewMiddleware(cfg *Config, LOGGER log.Logger) middleware.Middleware {
 	LOG := log.NewHelper(LOGGER)
 	LOG.Infof(
 		"new rate_pass middleware enable=%v operations=%v rate=%v",
-		cfg.IsEnable(),
+		cfg.GetEnable(),
 		len(cfg.rateMap),
 		cfg.rate,
 	)

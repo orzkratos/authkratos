@@ -44,8 +44,8 @@ func NewMiddleware(cfg *Config, LOGGER log.Logger) middleware.Middleware {
 
 func matchFunc(cfg *Config, LOGGER log.Logger) selector.MatchFunc {
 	LOG := log.NewHelper(LOGGER)
-	qMap := utils.MapKxB(cfg.fastOperations)
-	sMap := utils.MapKxB(cfg.slowOperations)
+	qMap := utils.NewKeysMap(cfg.fastOperations)
+	sMap := utils.NewKeysMap(cfg.slowOperations)
 	return func(ctx context.Context, operation string) bool {
 		path := authkratosroutes.New(operation)
 		if qMap[path] {

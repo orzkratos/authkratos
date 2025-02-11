@@ -39,7 +39,7 @@ func (a *Config) SetEnable(enable bool) {
 	a.enable = enable
 }
 
-func (a *Config) IsEnable() bool {
+func (a *Config) GetEnable() bool {
 	if a != nil {
 		return a.enable
 	}
@@ -50,7 +50,7 @@ func NewMiddleware(cfg *Config, LOGGER log.Logger) middleware.Middleware {
 	LOG := log.NewHelper(LOGGER)
 	LOG.Infof(
 		"new rate_limit middleware enable=%v rule=%v include=%v operations=%v",
-		cfg.IsEnable(),
+		cfg.GetEnable(),
 		cfg.rule.String(),
 		cfg.selectPath.SelectSide,
 		len(cfg.selectPath.Operations),
@@ -63,7 +63,7 @@ func matchFunc(cfg *Config, LOGGER log.Logger) selector.MatchFunc {
 	LOG := log.NewHelper(LOGGER)
 
 	return func(ctx context.Context, operation string) bool {
-		if !cfg.IsEnable() {
+		if !cfg.GetEnable() {
 			return false
 		}
 		match := cfg.selectPath.Match(operation)
@@ -79,24 +79,22 @@ func matchFunc(cfg *Config, LOGGER log.Logger) selector.MatchFunc {
 func middlewareFunc(cfg *Config, LOGGER log.Logger) middleware.Middleware {
 	LOG := log.NewHelper(LOGGER)
 
-	rateLimitRule := *cfg.rule
-
 	return func(handleFunc middleware.Handler) middleware.Handler {
 		return func(ctx context.Context, req interface{}) (resp interface{}, err error) {
-			if !cfg.IsEnable() {
+			if !cfg.GetEnable() {
 				LOG.Infof("rate_limit: cfg.enable=false anonymous pass")
 				return handleFunc(ctx, req)
 			}
 
 			uck := cfg.parseUniqueCode(ctx)
 
-			rls, err := cfg.rateLimitBottle.Allow(ctx, uck, rateLimitRule)
+			allowResult, err := cfg.rateLimitBottle.Allow(ctx, uck, *cfg.rule)
 			if err != nil {
 				return nil, erero.WithMessage(err, "rate_limit redis exception")
 			}
 
-			if rls.Allowed != 0 {
-				LOG.Debugf("rate_limit allowed=%v remaining=%v so can pass", rls.Allowed, rls.Remaining)
+			if allowResult.Allowed != 0 {
+				LOG.Debugf("rate_limit allowed=%v remaining=%v so can pass", allowResult.Allowed, allowResult.Remaining)
 			} else {
 				LOG.Warnf("rate_limit exceeds so reject requests")
 

@@ -7,7 +7,7 @@ import (
 )
 
 func TestMapKxB(t *testing.T) {
-	t.Log(neatjsons.S(MapKxB([]string{"a", "b", "c"})))
+	t.Log(neatjsons.S(NewKeysMap([]string{"a", "b", "c"})))
 }
 
 func TestSample(t *testing.T) {

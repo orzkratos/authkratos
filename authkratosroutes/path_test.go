@@ -6,12 +6,8 @@ import (
 	"github.com/yyle88/neatjson/neatjsons"
 )
 
-func TestMain(m *testing.M) {
-	m.Run()
-}
-
-func TestNewPathsBooMap(t *testing.T) {
-	res := NewPathsBooMap([]Path{
+func TestNewPathsMap(t *testing.T) {
+	res := NewPathsMap([]Path{
 		"a/b/c",
 		"x/y/z",
 	})
