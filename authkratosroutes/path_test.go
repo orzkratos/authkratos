@@ -6,8 +6,8 @@ import (
 	"github.com/yyle88/neatjson/neatjsons"
 )
 
-func TestNewPathsMap(t *testing.T) {
-	res := NewPathsMap([]Path{
+func TestNewOperations(t *testing.T) {
+	res := NewOperations([]Path{
 		"a/b/c",
 		"x/y/z",
 	})

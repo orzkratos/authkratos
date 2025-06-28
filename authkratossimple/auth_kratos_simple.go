@@ -9,6 +9,7 @@ import (
 	"github.com/go-kratos/kratos/v2/middleware/selector"
 	"github.com/go-kratos/kratos/v2/transport"
 	"github.com/orzkratos/authkratos/authkratosroutes"
+	"github.com/orzkratos/authkratos/internal/utils"
 	"go.elastic.co/apm/v2"
 )
 
@@ -67,9 +68,9 @@ func matchFunc(cfg *Config, LOGGER log.Logger) selector.MatchFunc {
 		}
 		match := cfg.selectPath.Match(operation)
 		if match {
-			LOG.Debugf("operation=%s include=%v match=%v must check auth", operation, cfg.selectPath.SelectSide, match)
+			LOG.Debugf("operation=%s include=%v match=%d next -> check auth", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
 		} else {
-			LOG.Debugf("operation=%s include=%v match=%v skip check auth", operation, cfg.selectPath.SelectSide, match)
+			LOG.Debugf("operation=%s include=%v match=%d skip -- check auth", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
 		}
 		return match
 	}
@@ -84,12 +85,12 @@ func middlewareFunc(cfg *Config, LOGGER log.Logger) middleware.Middleware {
 				LOG.Infof("auth_kratos_simple: cfg.enable=false anyone can pass")
 				return handleFunc(ctx, req)
 			}
-			if tp, ok := transport.FromServerContext(ctx); ok {
+			if tsp, ok := transport.FromServerContext(ctx); ok {
 				apmTx := apm.TransactionFromContext(ctx)
 				sp := apmTx.StartSpan("auth_kratos_simple", "auth", nil)
 				defer sp.End()
 
-				token := tp.RequestHeader().Get(cfg.tokenField)
+				token := tsp.RequestHeader().Get(cfg.tokenField)
 				if token == "" {
 					return nil, errors.Unauthorized("UNAUTHORIZED", "auth_kratos_simple: auth token is missing")
 				}

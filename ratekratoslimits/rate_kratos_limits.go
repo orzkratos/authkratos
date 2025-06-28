@@ -9,6 +9,7 @@ import (
 	"github.com/go-kratos/kratos/v2/middleware/selector"
 	"github.com/go-redis/redis_rate/v10"
 	"github.com/orzkratos/authkratos/authkratosroutes"
+	"github.com/orzkratos/authkratos/internal/utils"
 	"github.com/yyle88/erero"
 )
 
@@ -68,9 +69,9 @@ func matchFunc(cfg *Config, LOGGER log.Logger) selector.MatchFunc {
 		}
 		match := cfg.selectPath.Match(operation)
 		if match {
-			LOG.Debugf("operation=%s include=%v match=%v must check rate", operation, cfg.selectPath.SelectSide, match)
+			LOG.Debugf("operation=%s include=%v match=%d next -> check rate", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
 		} else {
-			LOG.Debugf("operation=%s include=%v match=%v skip check rate", operation, cfg.selectPath.SelectSide, match)
+			LOG.Debugf("operation=%s include=%v match=%d skip -- check rate", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
 		}
 		return match
 	}

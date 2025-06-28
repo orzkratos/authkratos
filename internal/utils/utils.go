@@ -35,3 +35,10 @@ func Sample[T any](a []T) (res T) {
 	}
 	return res
 }
+
+func BooleanToNum(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}

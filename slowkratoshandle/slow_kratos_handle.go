@@ -19,8 +19,8 @@ type Config struct {
 
 func NewConfig(
 	fastTimeoutGap time.Duration,
-	fastOperations authkratosroutes.Paths,
-	slowOperations authkratosroutes.Paths,
+	fastOperations authkratosroutes.Operations,
+	slowOperations authkratosroutes.Operations,
 ) *Config {
 	return &Config{
 		fastTimeoutGap: fastTimeoutGap,
