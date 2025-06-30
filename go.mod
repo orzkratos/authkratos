@@ -5,7 +5,6 @@ go 1.22.8
 require (
 	github.com/go-kratos/kratos/v2 v2.8.4
 	github.com/go-redis/redis_rate/v10 v10.0.1
-	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.10.0
 	github.com/yyle88/erero v1.0.23
 	github.com/yyle88/must v0.0.25

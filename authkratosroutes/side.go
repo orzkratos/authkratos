@@ -1,11 +1,6 @@
 package authkratosroutes
 
 import (
-	"context"
-
-	"github.com/go-kratos/kratos/v2/log"
-	"github.com/go-kratos/kratos/v2/middleware/selector"
-	"github.com/orzkratos/authkratos/internal/utils"
 	"golang.org/x/exp/maps"
 )
 
@@ -35,34 +30,20 @@ func NewExclude(paths ...Path) *SelectPath {
 	}
 }
 
-func (c *SelectPath) Match(operation string) bool {
+func (c *SelectPath) Match(operation Path) bool {
 	switch c.SelectSide {
 	case INCLUDE:
 		if c.Operations == nil {
 			return false
 		}
-		return c.Operations[Path(operation)]
+		return c.Operations[operation]
 	case EXCLUDE:
 		if c.Operations == nil {
 			return true
 		}
-		return !c.Operations[Path(operation)]
+		return !c.Operations[operation]
 	default:
 		panic(c.SelectSide)
-	}
-}
-
-func (c *SelectPath) NewMatchFunc(description string, logger log.Logger) selector.MatchFunc {
-	LOG := log.NewHelper(logger)
-
-	return func(ctx context.Context, operation string) bool {
-		match := c.Match(operation)
-		if match {
-			LOG.Debugf("operation=%s include=%v match=%d next -> %s", operation, c.SelectSide, utils.BooleanToNum(match), description)
-		} else {
-			LOG.Debugf("operation=%s include=%v match=%d skip -- %s", operation, c.SelectSide, utils.BooleanToNum(match), description)
-		}
-		return match
 	}
 }
 

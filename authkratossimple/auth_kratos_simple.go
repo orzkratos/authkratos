@@ -8,99 +8,101 @@ import (
 	"github.com/go-kratos/kratos/v2/middleware"
 	"github.com/go-kratos/kratos/v2/middleware/selector"
 	"github.com/go-kratos/kratos/v2/transport"
+	"github.com/orzkratos/authkratos"
 	"github.com/orzkratos/authkratos/authkratosroutes"
 	"github.com/orzkratos/authkratos/internal/utils"
+	"github.com/yyle88/neatjson/neatjsons"
 	"go.elastic.co/apm/v2"
 )
 
 type CheckFunc func(ctx context.Context, token string) (context.Context, *errors.Error)
 
 type Config struct {
-	tokenField string
+	fieldName  string // 注意配置时不要配置非标准的 (Nginx 默认忽略带有下划线的 headers 信息，除非配置 underscores_in_headers on; 因此在开发中建议不要配置含特殊字符的字段名)
 	selectPath *authkratosroutes.SelectPath
 	checkMatch CheckFunc
-	enable     bool
+	debugMode  bool
 }
 
-func NewConfig(tokenField string, checkMatch CheckFunc, selectPath *authkratosroutes.SelectPath) *Config {
+func NewConfig(selectPath *authkratosroutes.SelectPath, checkMatch CheckFunc) *Config {
 	return &Config{
-		tokenField: tokenField,
+		fieldName:  "Authorization",
 		selectPath: selectPath,
 		checkMatch: checkMatch,
-		enable:     true,
+		debugMode:  authkratos.GetDebugMode(),
 	}
 }
 
-func (a *Config) GetTokenField() string {
-	return a.tokenField
+// WithFieldName 设置请求头中用于认证的字段名
+// 注意配置时不要配置非标准的 (Nginx 默认忽略带有下划线的 headers 信息，除非配置 underscores_in_headers on; 因此在开发中建议不要配置含特殊字符的字段名)
+func (c *Config) WithFieldName(fieldName string) *Config {
+	c.fieldName = fieldName
+	return c
 }
 
-func (a *Config) SetEnable(enable bool) {
-	a.enable = enable
+func (c *Config) WithDebugMode(debugMode bool) *Config {
+	c.debugMode = debugMode
+	return c
 }
 
-func (a *Config) GetEnable() bool {
-	if a != nil {
-		return a.enable && a.tokenField != ""
-	}
-	return false
-}
-
-func NewMiddleware(cfg *Config, LOGGER log.Logger) middleware.Middleware {
-	LOG := log.NewHelper(LOGGER)
+func NewMiddleware(cfg *Config, logger log.Logger) middleware.Middleware {
+	LOG := log.NewHelper(logger)
 	LOG.Infof(
-		"new check_auth middleware enable=%v tokenField=%v simple=x include=%v operations=%v",
-		cfg.GetEnable(),
-		cfg.tokenField,
+		"auth-kratos-simple: new middleware field-name=%v select-side=%v operations=%v debug-mode=%v",
+		cfg.fieldName,
 		cfg.selectPath.SelectSide,
 		len(cfg.selectPath.Operations),
+		cfg.debugMode,
 	)
-
-	return selector.Server(middlewareFunc(cfg, LOGGER)).Match(matchFunc(cfg, LOGGER)).Build()
+	if cfg.debugMode {
+		LOG.Debugf("auth-kratos-simple: new middleware field-name=%v select-path: %s", cfg.fieldName, neatjsons.S(cfg.selectPath))
+	}
+	return selector.Server(middlewareFunc(cfg, logger)).Match(matchFunc(cfg, logger)).Build()
 }
 
-func matchFunc(cfg *Config, LOGGER log.Logger) selector.MatchFunc {
-	LOG := log.NewHelper(LOGGER)
+func matchFunc(cfg *Config, logger log.Logger) selector.MatchFunc {
+	LOG := log.NewHelper(logger)
 
 	return func(ctx context.Context, operation string) bool {
-		if !cfg.GetEnable() {
-			return false
-		}
 		match := cfg.selectPath.Match(operation)
-		if match {
-			LOG.Debugf("operation=%s include=%v match=%d next -> check auth", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
-		} else {
-			LOG.Debugf("operation=%s include=%v match=%d skip -- check auth", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
+		if cfg.debugMode {
+			if match {
+				LOG.Debugf("auth-kratos-simple: operation=%s include=%v match=%d next -> check auth", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
+			} else {
+				LOG.Debugf("auth-kratos-simple: operation=%s include=%v match=%d skip -- check auth", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
+			}
 		}
 		return match
 	}
 }
 
-func middlewareFunc(cfg *Config, LOGGER log.Logger) middleware.Middleware {
-	LOG := log.NewHelper(LOGGER)
+func middlewareFunc(cfg *Config, logger log.Logger) middleware.Middleware {
+	LOG := log.NewHelper(logger)
 
 	return func(handleFunc middleware.Handler) middleware.Handler {
 		return func(ctx context.Context, req interface{}) (interface{}, error) {
-			if !cfg.GetEnable() {
-				LOG.Infof("auth_kratos_simple: cfg.enable=false anyone can pass")
-				return handleFunc(ctx, req)
-			}
 			if tsp, ok := transport.FromServerContext(ctx); ok {
 				apmTx := apm.TransactionFromContext(ctx)
-				sp := apmTx.StartSpan("auth_kratos_simple", "auth", nil)
-				defer sp.End()
+				span := apmTx.StartSpan("auth-kratos-simple", "auth", nil)
+				defer span.End()
 
-				token := tsp.RequestHeader().Get(cfg.tokenField)
-				if token == "" {
-					return nil, errors.Unauthorized("UNAUTHORIZED", "auth_kratos_simple: auth token is missing")
+				authToken := tsp.RequestHeader().Get(cfg.fieldName)
+				if authToken == "" {
+					if cfg.debugMode {
+						LOG.Debugf("auth-kratos-simple: auth-token is missing")
+					}
+					return nil, errors.Unauthorized("UNAUTHORIZED", "auth-kratos-simple: auth-token is missing")
 				}
-				ctx, erk := cfg.checkMatch(ctx, token)
+				ctx, erk := cfg.checkMatch(ctx, authToken)
 				if erk != nil {
+					if cfg.debugMode {
+						LOG.Debugf("auth-kratos-simple: auth-token mismatch: %s", erk.Error())
+					}
 					return nil, erk
 				}
 				return handleFunc(ctx, req)
 			}
-			return nil, errors.Unauthorized("UNAUTHORIZED", "auth_kratos_simple: wrong context for middleware")
+			return nil, errors.Unauthorized("UNAUTHORIZED", "auth-kratos-simple: wrong context")
 		}
 	}
 }

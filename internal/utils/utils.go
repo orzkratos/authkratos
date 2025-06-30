@@ -2,10 +2,7 @@ package utils
 
 import (
 	"encoding/base64"
-	"encoding/hex"
 	"math/rand/v2"
-
-	"github.com/google/uuid"
 )
 
 func BasicEncode(username, password string) string {
@@ -14,11 +11,6 @@ func BasicEncode(username, password string) string {
 
 func BasicAuth(username, password string) string {
 	return "Basic " + BasicEncode(username, password)
-}
-
-func NewUUID() string {
-	uux := uuid.New()
-	return hex.EncodeToString(uux[:])
 }
 
 func NewKeysMap[K comparable](a []K) (mp map[K]bool) {

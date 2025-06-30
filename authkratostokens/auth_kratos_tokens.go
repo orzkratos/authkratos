@@ -4,188 +4,193 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"strings"
 
 	"github.com/go-kratos/kratos/v2/errors"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/middleware"
 	"github.com/go-kratos/kratos/v2/middleware/selector"
 	"github.com/go-kratos/kratos/v2/transport"
+	"github.com/orzkratos/authkratos"
 	"github.com/orzkratos/authkratos/authkratosroutes"
 	"github.com/orzkratos/authkratos/internal/utils"
 	"github.com/yyle88/must"
+	"github.com/yyle88/neatjson/neatjsons"
 	"go.elastic.co/apm/v2"
 	"golang.org/x/exp/maps"
 )
 
 type Config struct {
-	tokenField string
+	fieldName  string
+	authTokens map[string]string
 	selectPath *authkratosroutes.SelectPath
-	tokens     map[string]string
-	enable     bool
+	debugMode  bool
 }
 
-func NewConfig(tokenField string, tokens map[string]string, selectPath *authkratosroutes.SelectPath) *Config {
+func NewConfig(authTokens map[string]string, selectPath *authkratosroutes.SelectPath) *Config {
 	return &Config{
-		tokenField: tokenField,
+		fieldName:  "Authorization", // 注意配置时不要配置非标准的 (Nginx 默认忽略带有下划线的 headers 信息，除非配置 underscores_in_headers on; 因此在开发中建议不要配置含特殊字符的字段名)
+		authTokens: authTokens,
 		selectPath: selectPath,
-		tokens:     tokens,
-		enable:     true,
+		debugMode:  authkratos.GetDebugMode(),
 	}
 }
 
-func (a *Config) GetTokenField() string {
-	return a.tokenField
+// WithFieldName 设置请求头中用于认证的字段名
+// 注意配置时不要配置非标准的 (Nginx 默认忽略带有下划线的 headers 信息，除非配置 underscores_in_headers on; 因此在开发中建议不要配置含特殊字符的字段名)
+func (c *Config) WithFieldName(fieldName string) *Config {
+	c.fieldName = fieldName
+	return c
 }
 
-func (a *Config) SetEnable(enable bool) {
-	a.enable = enable
+func (c *Config) WithDebugMode(debugMode bool) *Config {
+	c.debugMode = debugMode
+	return c
 }
 
-func (a *Config) GetEnable() bool {
-	if a != nil {
-		return a.enable && a.tokenField != ""
-	}
-	return false
-}
-
-func (a *Config) GetAuths() map[string]string {
-	if a != nil {
-		return a.tokens
+func (c *Config) GetAuthTokens() map[string]string {
+	if c != nil {
+		return c.authTokens
 	}
 	return nil
 }
 
-func (a *Config) CreateToken(username string) string {
-	password, ok := a.GetAuths()[username]
+func (c *Config) CreateToken(username string) string {
+	password, ok := c.GetAuthTokens()[username]
 	must.TRUE(ok)
 	must.Nice(password)
 	return utils.BasicAuth(username, password)
 }
 
-func (a *Config) GetOneToken() string {
-	if !a.GetEnable() {
-		return utils.BasicAuth(utils.NewUUID(), utils.NewUUID())
-	} else {
-		return a.CreateToken(utils.Sample(maps.Keys(a.GetAuths())))
-	}
+func (c *Config) GetOneToken() string {
+	return c.CreateToken(utils.Sample(maps.Keys(c.GetAuthTokens())))
 }
 
-func (a *Config) GetMapTokens() map[string]string {
-	if !a.GetEnable() {
-		username := utils.NewUUID()
-		password := utils.NewUUID()
-		return map[string]string{username: utils.BasicAuth(username, password)}
-	} else {
-		var res = make(map[string]string, len(a.GetAuths()))
-		for username, password := range a.GetAuths() {
-			res[username] = utils.BasicAuth(username, password)
-		}
-		return res
+func (c *Config) GetMapTokens() map[string]string {
+	var res = make(map[string]string, len(c.GetAuthTokens()))
+	for username, password := range c.GetAuthTokens() {
+		res[username] = utils.BasicAuth(username, password)
 	}
+	return res
 }
 
-func NewMiddleware(cfg *Config, LOGGER log.Logger) middleware.Middleware {
-	LOG := log.NewHelper(LOGGER)
+func NewMiddleware(cfg *Config, logger log.Logger) middleware.Middleware {
+	LOG := log.NewHelper(logger)
 	LOG.Infof(
-		"new check_auth middleware enable=%v tokenField=%v tokens=%v include=%v operations=%v",
-		cfg.GetEnable(),
-		cfg.tokenField,
-		len(cfg.tokens),
+		"auth-kratos-tokens: new middleware field-name=%v auth-tokens=%d include=%v operations=%d",
+		cfg.fieldName,
+		len(cfg.authTokens),
 		cfg.selectPath.SelectSide,
 		len(cfg.selectPath.Operations),
 	)
-
-	return selector.Server(middlewareFunc(cfg, LOGGER)).Match(matchFunc(cfg, LOGGER)).Build()
+	if cfg.debugMode {
+		LOG.Debugf("auth-kratos-tokens: new middleware field-name=%v select-path: %s", cfg.fieldName, neatjsons.S(cfg.selectPath))
+	}
+	return selector.Server(middlewareFunc(cfg, logger)).Match(matchFunc(cfg, logger)).Build()
 }
 
-func matchFunc(cfg *Config, LOGGER log.Logger) selector.MatchFunc {
-	LOG := log.NewHelper(LOGGER)
+func matchFunc(cfg *Config, logger log.Logger) selector.MatchFunc {
+	LOG := log.NewHelper(logger)
 
 	return func(ctx context.Context, operation string) bool {
-		if !cfg.GetEnable() {
-			return false
-		}
 		match := cfg.selectPath.Match(operation)
-		if match {
-			LOG.Debugf("operation=%s include=%v match=%d next -> check auth", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
-		} else {
-			LOG.Debugf("operation=%s include=%v match=%d skip -- check auth", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
+		if cfg.debugMode {
+			if match {
+				LOG.Debugf("auth-kratos-tokens: operation=%s include=%v match=%d next -> check auth", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
+			} else {
+				LOG.Debugf("auth-kratos-tokens: operation=%s include=%v match=%d skip -- check auth", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
+			}
 		}
 		return match
 	}
 }
 
-func middlewareFunc(cfg *Config, LOGGER log.Logger) middleware.Middleware {
-	LOG := log.NewHelper(LOGGER)
+func middlewareFunc(cfg *Config, logger log.Logger) middleware.Middleware {
+	LOG := log.NewHelper(logger)
 
-	var mapToken = make(map[string]string, len(cfg.tokens))
-	for acc, pwd := range cfg.tokens {
-		mapToken[pwd] = acc
+	mapBox := &authTokenMapBox{
+		mapToken: newMapToken(cfg.authTokens),
+		mapBasic: newMapBasic(cfg.authTokens),
 	}
-	var mapBasic = map[string]string{}
-	for username, token := range cfg.tokens {
-		for _, name := range []string{"None", username} { //有些请求没有用户名因此补个None，兼容老的业务
-			s := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", name, token)))
-			v := "Basic " + string(s)
-			mapBasic[v] = username
-		}
-	}
+
 	return func(handleFunc middleware.Handler) middleware.Handler {
 		return func(ctx context.Context, req interface{}) (interface{}, error) {
-			if !cfg.GetEnable() {
-				LOG.Infof("check_auth: cfg.enable=false anonymous pass")
-				return handleFunc(ctx, req)
-			}
 			if tsp, ok := transport.FromServerContext(ctx); ok {
 				apmTx := apm.TransactionFromContext(ctx)
-				sp := apmTx.StartSpan("check_auth", "auth", nil)
-				defer sp.End()
+				span := apmTx.StartSpan("auth-kratos-tokens", "auth", nil)
+				defer span.End()
 
-				var token = tsp.RequestHeader().Get(cfg.tokenField)
-				if token == "" {
-					return nil, errors.Unauthorized("UNAUTHORIZED", "check_auth: auth token is missing")
-				}
-				if username, ok := mapToken[token]; ok {
-					LOG.Infof("check_auth: rawToken request username:%v quick pass", username)
-				} else if username, ok := mapBasic[token]; ok {
-					LOG.Infof("check_auth: BasicToken request username:%v quick pass", username)
-				} else {
-					var success = false
-					if messParts := strings.SplitN(token, " ", 2); len(messParts) == 2 {
-						messType := messParts[0]
-						switch {
-						case strings.EqualFold(messType, "Bearer"):
-							//暂不需要
-						case strings.EqualFold(messType, "Basic"):
-							if erk := checkBasicToken(messParts[1], mapToken, LOG); erk != nil {
-								return nil, erk
-							}
-							success = true
-						}
+				var authToken = tsp.RequestHeader().Get(cfg.fieldName)
+				if authToken == "" {
+					if cfg.debugMode {
+						LOG.Debugf("auth-kratos-tokens: auth-token is missing")
 					}
-					if !success {
-						return nil, errors.Unauthorized("UNAUTHORIZED", "check_auth: auth token is wrong")
-					}
+					return nil, errors.Unauthorized("UNAUTHORIZED", "auth-kratos-tokens: auth-token is missing")
 				}
+				username, erk := checkAuthToken(cfg, mapBox, authToken, LOG)
+				if erk != nil {
+					if cfg.debugMode {
+						LOG.Debugf("auth-kratos-tokens: auth-token mismatch: %s", erk.Error())
+					}
+					return nil, erk
+				}
+				ctx = setContextWithUsername(ctx, username)
 				return handleFunc(ctx, req)
 			}
-			return nil, errors.Unauthorized("UNAUTHORIZED", "check_auth: wrong context for middleware")
+			return nil, errors.Unauthorized("UNAUTHORIZED", "auth-kratos-tokens: wrong context")
 		}
 	}
 }
 
-func checkBasicToken(messBasic string, mapToken map[string]string, LOG *log.Helper) *errors.Error {
-	data, err := base64.StdEncoding.DecodeString(messBasic)
-	if err != nil {
-		return errors.Unauthorized("UNAUTHORIZED", "check_auth: reason:"+err.Error())
+func checkAuthToken(cfg *Config, mapBox *authTokenMapBox, token string, LOG *log.Helper) (string, *errors.Error) {
+	if username, ok := mapBox.mapToken[token]; ok {
+		if cfg.debugMode {
+			LOG.Debugf("auth-kratos-tokens: raw-s-token request username:%v quick pass", username)
+		}
+		return username, nil
 	}
-	rawParts := strings.Split(string(data), ":")
-	rawToken := rawParts[1] //前面不报错的话这边必然就能切出元素，其下标不会超出限制
-	username, ok := mapToken[rawToken]
-	if !ok {
-		return errors.Unauthorized("UNAUTHORIZED", "check_auth: auth token is wrong")
+	if username, ok := mapBox.mapBasic[token]; ok {
+		if cfg.debugMode {
+			LOG.Debugf("auth-kratos-tokens: basic-token request username:%v quick pass", username)
+		}
+		return username, nil
 	}
-	LOG.Infof("check_auth: basic token request username:%v pass", username)
-	return nil
+	return "", errors.Unauthorized("UNAUTHORIZED", "auth-kratos-tokens: auth-token mismatch")
+}
+
+type authTokenMapBox struct {
+	mapToken map[string]string
+	mapBasic map[string]string
+}
+
+func newMapToken(authTokens map[string]string) map[string]string {
+	var mapToken = make(map[string]string, len(authTokens))
+	for acc, pwd := range authTokens {
+		mapToken[pwd] = acc
+	}
+	return mapToken
+}
+
+func newMapBasic(authTokens map[string]string) map[string]string {
+	var mapBasic = map[string]string{}
+	for username, token := range authTokens {
+		s := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", username, token)))
+		v := "Basic " + string(s)
+		mapBasic[v] = username
+	}
+	return mapBasic
+}
+
+type usernameKey struct{}
+
+func setContextWithUsername(ctx context.Context, username string) context.Context {
+	return context.WithValue(ctx, usernameKey{}, username)
+}
+
+func GetUsernameFromContext(ctx context.Context) (string, bool) {
+	username, ok := ctx.Value(usernameKey{}).(string)
+	return username, ok
+}
+
+func GetUsername(ctx context.Context) (string, bool) {
+	return GetUsernameFromContext(ctx)
 }
