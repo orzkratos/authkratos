@@ -40,6 +40,11 @@ func (c *Config) WithFieldName(fieldName string) *Config {
 	return c
 }
 
+// GetFieldName 获取请求头中用于认证的字段名
+func (c *Config) GetFieldName() string {
+	return c.fieldName
+}
+
 func (c *Config) WithDebugMode(debugMode bool) *Config {
 	c.debugMode = debugMode
 	return c

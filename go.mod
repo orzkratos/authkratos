@@ -6,7 +6,6 @@ require (
 	github.com/go-kratos/kratos/v2 v2.8.4
 	github.com/go-redis/redis_rate/v10 v10.0.1
 	github.com/stretchr/testify v1.10.0
-	github.com/yyle88/erero v1.0.23
 	github.com/yyle88/must v0.0.25
 	github.com/yyle88/neatjson v0.0.12
 	github.com/yyle88/syncmap v1.0.16
@@ -38,6 +37,7 @@ require (
 	github.com/tklauser/numcpus v0.9.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/yyle88/done v1.0.26 // indirect
+	github.com/yyle88/erero v1.0.23 // indirect
 	github.com/yyle88/mutexmap v1.0.13 // indirect
 	github.com/yyle88/sure v0.0.38 // indirect
 	github.com/yyle88/syntaxgo v0.0.53 // indirect

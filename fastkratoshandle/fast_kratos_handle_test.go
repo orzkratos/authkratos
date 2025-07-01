@@ -1,4 +1,4 @@
-package slowkratoshandle
+package fastkratoshandle
 
 import (
 	"testing"

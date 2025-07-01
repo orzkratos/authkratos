@@ -3,103 +3,97 @@ package utils_kratos_ratelimit
 import (
 	"context"
 
+	"github.com/go-kratos/kratos/v2/errors"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/middleware"
 	"github.com/go-kratos/kratos/v2/middleware/ratelimit"
 	"github.com/go-kratos/kratos/v2/middleware/selector"
 	"github.com/go-redis/redis_rate/v10"
+	"github.com/orzkratos/authkratos"
 	"github.com/orzkratos/authkratos/authkratosroutes"
 	"github.com/orzkratos/authkratos/internal/utils"
-	"github.com/yyle88/erero"
+	"github.com/yyle88/neatjson/neatjsons"
 )
 
 type Config struct {
-	rateLimitBottle *redis_rate.Limiter
-	rule            *redis_rate.Limit
-	parseUniqueCode func(ctx context.Context) string
-	selectPath      *authkratosroutes.SelectPath
-	enable          bool
+	redisCache *redis_rate.Limiter
+	redisLimit *redis_rate.Limit
+	selectPath *authkratosroutes.SelectPath
+	keyFromCtx func(ctx context.Context) string
+	debugMode  bool
 }
 
 func NewConfig(
-	rateLimitBottle *redis_rate.Limiter,
-	rule *redis_rate.Limit,
-	parseUniqueCode func(ctx context.Context) string,
+	redisCache *redis_rate.Limiter,
+	redisLimit *redis_rate.Limit,
 	selectPath *authkratosroutes.SelectPath,
+	keyFromCtx func(ctx context.Context) string,
 ) *Config {
 	return &Config{
-		rateLimitBottle: rateLimitBottle,
-		rule:            rule,
-		parseUniqueCode: parseUniqueCode,
-		selectPath:      selectPath,
-		enable:          true,
+		redisCache: redisCache,
+		redisLimit: redisLimit,
+		selectPath: selectPath,
+		keyFromCtx: keyFromCtx,
+		debugMode:  authkratos.GetDebugMode(),
 	}
 }
 
-func (a *Config) SetEnable(enable bool) {
-	a.enable = enable
+func (c *Config) WithDebugMode(debugMode bool) *Config {
+	c.debugMode = debugMode
+	return c
 }
 
-func (a *Config) GetEnable() bool {
-	if a != nil {
-		return a.enable
-	}
-	return false
-}
-
-func NewMiddleware(cfg *Config, LOGGER log.Logger) middleware.Middleware {
-	LOG := log.NewHelper(LOGGER)
+func NewMiddleware(cfg *Config, logger log.Logger) middleware.Middleware {
+	LOG := log.NewHelper(logger)
 	LOG.Infof(
-		"new rate_limit middleware enable=%v rule=%v include=%v operations=%v",
-		cfg.GetEnable(),
-		cfg.rule.String(),
+		"rate-kratos-limits: new middleware include=%s operations=%d rate=%v debug-mode=%v",
 		cfg.selectPath.SelectSide,
 		len(cfg.selectPath.Operations),
+		cfg.redisLimit.String(),
+		cfg.debugMode,
 	)
-
-	return selector.Server(middlewareFunc(cfg, LOGGER)).Match(matchFunc(cfg, LOGGER)).Build()
+	if cfg.debugMode {
+		LOG.Debugf("rate-kratos-limits: new middleware select-path: %s", neatjsons.S(cfg.selectPath))
+	}
+	return selector.Server(middlewareFunc(cfg, logger)).Match(matchFunc(cfg, logger)).Build()
 }
 
-func matchFunc(cfg *Config, LOGGER log.Logger) selector.MatchFunc {
-	LOG := log.NewHelper(LOGGER)
+func matchFunc(cfg *Config, logger log.Logger) selector.MatchFunc {
+	LOG := log.NewHelper(logger)
 
 	return func(ctx context.Context, operation string) bool {
-		if !cfg.GetEnable() {
-			return false
-		}
 		match := cfg.selectPath.Match(operation)
-		if match {
-			LOG.Debugf("operation=%s include=%v match=%d next -> check rate", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
-		} else {
-			LOG.Debugf("operation=%s include=%v match=%d skip -- check rate", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
+		if cfg.debugMode {
+			if match {
+				LOG.Debugf("rate-kratos-limits: operation=%s include=%v match=%d next -> check-rate-limit", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
+			} else {
+				LOG.Debugf("rate-kratos-limits: operation=%s include=%v match=%d skip -- check-rate-limit", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
+			}
 		}
 		return match
 	}
 }
 
-func middlewareFunc(cfg *Config, LOGGER log.Logger) middleware.Middleware {
-	LOG := log.NewHelper(LOGGER)
+func middlewareFunc(cfg *Config, logger log.Logger) middleware.Middleware {
+	LOG := log.NewHelper(logger)
 
 	return func(handleFunc middleware.Handler) middleware.Handler {
 		return func(ctx context.Context, req interface{}) (resp interface{}, err error) {
-			if !cfg.GetEnable() {
-				LOG.Infof("rate_limit: cfg.enable=false anonymous pass")
-				return handleFunc(ctx, req)
-			}
+			uniqueKey := cfg.keyFromCtx(ctx)
 
-			uck := cfg.parseUniqueCode(ctx)
-
-			allowResult, err := cfg.rateLimitBottle.Allow(ctx, uck, *cfg.rule)
+			allowResp, err := cfg.redisCache.Allow(ctx, uniqueKey, *cfg.redisLimit)
 			if err != nil {
-				return nil, erero.WithMessage(err, "rate_limit redis exception")
+				return nil, errors.ServiceUnavailable("unavailable", "rate-kratos-limits: redis is unavailable").WithCause(err)
 			}
 
-			if allowResult.Allowed != 0 {
-				LOG.Debugf("rate_limit allowed=%v remaining=%v so can pass", allowResult.Allowed, allowResult.Remaining)
-			} else {
-				LOG.Warnf("rate_limit exceeds so reject requests")
-
+			if allowResp.Allowed == 0 {
+				if cfg.debugMode {
+					LOG.Debugf("rate-kratos-limits: reject requests key=%s allowed=%v remaining=%v", uniqueKey, allowResp.Allowed, allowResp.Remaining)
+				}
 				return nil, ratelimit.ErrLimitExceed
+			}
+			if cfg.debugMode {
+				LOG.Debugf("rate-kratos-limits: accept requests key=%s allowed=%v remaining=%v", uniqueKey, allowResp.Allowed, allowResp.Remaining)
 			}
 			return handleFunc(ctx, req)
 		}
