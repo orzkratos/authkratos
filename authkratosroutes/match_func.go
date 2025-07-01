@@ -24,6 +24,11 @@ func NewConfig(actionDesc string, selectPath *SelectPath) *Config {
 	}
 }
 
+func (c *Config) WithDebugMode(debugMode bool) *Config {
+	c.debugMode = debugMode
+	return c
+}
+
 func NewMatchFunc(cfg *Config, logger log.Logger) selector.MatchFunc {
 	LOG := log.NewHelper(logger)
 	LOG.Infof(
