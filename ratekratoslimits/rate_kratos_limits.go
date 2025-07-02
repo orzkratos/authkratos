@@ -12,7 +12,6 @@ import (
 	"github.com/orzkratos/authkratos"
 	"github.com/orzkratos/authkratos/authkratosroutes"
 	"github.com/orzkratos/authkratos/internal/utils"
-	"github.com/yyle88/must"
 	"github.com/yyle88/neatjson/neatjsons"
 )
 
@@ -89,7 +88,12 @@ func middlewareFunc(cfg *Config, logger log.Logger) middleware.Middleware {
 				return nil, ratelimit.ErrLimitExceed
 			}
 
-			must.Nice(uniqueKey) //避免空键
+			if uniqueKey == "" {
+				if cfg.debugMode {
+					LOG.Debugf("rate-kratos-limits: reject requests key=nothing missing unique key from context")
+				}
+				return nil, ratelimit.ErrLimitExceed
+			}
 
 			// 这块底层包在设计时有 AllowN 的设计，这使得该函数的返回值，还得转换转换 res.Allowed > 0 时才算是通过
 			res, err := cfg.redisCache.Allow(ctx, uniqueKey, *cfg.redisLimit)
