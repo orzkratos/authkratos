@@ -1,59 +1,23 @@
 package authkratosroutes
 
-import (
-	"golang.org/x/exp/maps"
-)
-
+// SelectSide represents the matching mode for RouteScope
+// SelectSide 表示 RouteScope 的匹配模式
 type SelectSide string
 
 const (
-	INCLUDE SelectSide = "INCLUDE"
-	EXCLUDE SelectSide = "EXCLUDE"
+	INCLUDE SelectSide = "INCLUDE" // Match only specified operations // 仅匹配指定操作
+	EXCLUDE SelectSide = "EXCLUDE" // Match all except specified operations // 匹配除指定操作外的所有操作
 )
 
-type SelectPath struct {
-	SelectSide SelectSide
-	Operations map[Path]bool
-}
-
-func NewInclude(paths ...Path) *SelectPath {
-	return &SelectPath{
-		SelectSide: INCLUDE,
-		Operations: NewOperations(paths),
-	}
-}
-
-func NewExclude(paths ...Path) *SelectPath {
-	return &SelectPath{
-		SelectSide: EXCLUDE,
-		Operations: NewOperations(paths),
-	}
-}
-
-func (c *SelectPath) Match(operation Path) bool {
-	switch c.SelectSide {
+// Opposite returns the opposite side
+// 返回相反的一侧
+func (s SelectSide) Opposite() SelectSide {
+	switch s {
 	case INCLUDE:
-		if c.Operations == nil {
-			return false
-		}
-		return c.Operations[operation]
+		return EXCLUDE
 	case EXCLUDE:
-		if c.Operations == nil {
-			return true
-		}
-		return !c.Operations[operation]
+		return INCLUDE
 	default:
-		panic(c.SelectSide)
-	}
-}
-
-func (c *SelectPath) Opposite() *SelectPath {
-	switch c.SelectSide {
-	case INCLUDE:
-		return NewExclude(maps.Keys(c.Operations)...)
-	case EXCLUDE:
-		return NewInclude(maps.Keys(c.Operations)...)
-	default:
-		panic("unknown select-side: " + string(c.SelectSide))
+		panic("unknown select-side: " + string(s))
 	}
 }

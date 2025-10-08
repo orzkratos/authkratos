@@ -6,9 +6,15 @@ import (
 	"go.uber.org/zap"
 )
 
-// CheckApmAgentVersion 检查apm包版本是否相同，这是因为apm作为单独的模块，假如使用的版本不同，逻辑就无法正常执行
-// 因此建议是所有使用到 apm 的三方包都能够实现这个函数
-// 以确保不同模块使用的apm包版本相同
+// CheckApmAgentVersion checks APM package version alignment across modules
+// Gives true when versions match, false with warning log on mismatch
+// APM as distinct module needs version alignment across dependencies
+// Suggest each package using APM implements this check
+//
+// CheckApmAgentVersion 检查 apm 包版本是否相同
+// 版本匹配时返回 true，否则返回 false 并记录警告日志
+// apm 作为单独的模块，要求各依赖间版本对齐
+// 建议所有使用 apm 的包都实现此检查
 func CheckApmAgentVersion(version string) bool {
 	if agentVersion := apm.AgentVersion; version != agentVersion {
 		zaplog.LOGGER.LOG.Warn("check apm agent versions not match", zap.String("arg_version", version), zap.String("pkg_version", agentVersion))
@@ -17,10 +23,15 @@ func CheckApmAgentVersion(version string) bool {
 	return true
 }
 
-// GetApmAgentVersion 获得版本号
-// 假如你用的我的包，我的包 go.mod 里面引用的 apm 是 v2.0.0 的，这里就会返回 v2.0.0 版本号字符串
-// 假如你项目里直接用到 apm 包，则你需要检查你的包和我的包版本是否相同
-// 假如不同，逻辑不通
+// GetApmAgentVersion gets the APM agent version text
+// Using this package gives the version stated in go.mod
+// When using APM in the project, check version alignment
+// Mismatched versions cause runtime logic to fail
+//
+// GetApmAgentVersion 返回 APM agent 版本号字符串
+// 使用本包时，返回 go.mod 中引用的版本号
+// 如果项目中直接使用 APM 包，需检查版本是否对齐
+// 版本不一致会导致运行时逻辑失败
 func GetApmAgentVersion() string {
 	return apm.AgentVersion
 }

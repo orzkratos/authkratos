@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package somestub;
+
+import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
+
+option go_package = "github.com/orzkratos/authkratos/internal/somestub;somestub";
+
+// SomeStub provides test endpoints for authentication middleware testing
+// SomeStub 提供用于测试认证中间件的测试端点
+service SomeStub {
+  // SelectSomething - query operation, does not require authentication (public access)
+  // Tests EXCLUDE mode where certain operations are explicitly excluded from auth
+  // SelectSomething - 查询操作，不需要认证（公开访问）
+  // 测试 EXCLUDE 模式，某些操作明确排除认证
+  rpc SelectSomething(google.protobuf.StringValue) returns (google.protobuf.StringValue) {
+    option (google.api.http) = {
+      get: "/api/something/select"
+    };
+  }
+
+  // CreateSomething - write operation, requires authentication
+  // Returns user info from context to verify context injection works
+  // Tests INCLUDE mode where operations require authentication
+  // CreateSomething - 写操作，需要认证
+  // 从 context 返回用户信息以验证上下文注入
+  // 测试 INCLUDE 模式，操作需要认证
+  rpc CreateSomething(google.protobuf.StringValue) returns (google.protobuf.StringValue) {
+    option (google.api.http) = {
+      post: "/api/something/create"
+      body: "*"
+    };
+  }
+
+  // UpdateSomething - write operation, requires authentication
+  // Returns user info from context to verify context injection works
+  // Tests INCLUDE mode where operations require authentication
+  // UpdateSomething - 写操作，需要认证
+  // 从 context 返回用户信息以验证上下文注入
+  // 测试 INCLUDE 模式，操作需要认证
+  rpc UpdateSomething(google.protobuf.StringValue) returns (google.protobuf.StringValue) {
+    option (google.api.http) = {
+      put: "/api/something/update"
+      body: "*"
+    };
+  }
+}

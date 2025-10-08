@@ -1,3 +1,12 @@
+// Package passkratosrandom: Probabilistic request blocking middleware with chaos testing support
+// Provides random pass-through rate control with configurable odds
+// Good fit in testing, chaos engineering, and staged rollout scenarios
+// Enables blocking specific request ratio within designated route scope
+//
+// passkratosrandom: 概率性请求阻断中间件，支持混沌测试
+// 提供可配置概率的随机放行率控制
+// 适用于压力测试、混沌工程和灰度发布场景
+// 可在指定路由范围内阻断一定百分比的请求
 package passkratosrandom
 
 import (
@@ -11,20 +20,26 @@ import (
 	"github.com/orzkratos/authkratos"
 	"github.com/orzkratos/authkratos/authkratosroutes"
 	"github.com/orzkratos/authkratos/internal/utils"
+	"github.com/yyle88/must"
 	"github.com/yyle88/neatjson/neatjsons"
+	"go.elastic.co/apm/v2"
 )
 
 type Config struct {
-	selectPath *authkratosroutes.SelectPath
-	rate       float64
-	debugMode  bool
+	routeScope     *authkratosroutes.RouteScope
+	rate           float64
+	apmSpanName    string // APM span 名称，为空时不启动 APM 追踪
+	apmMatchSuffix string // APM match span 后缀，默认为 -match
+	debugMode      bool
 }
 
-func NewConfig(selectPath *authkratosroutes.SelectPath, passRate float64) *Config {
+func NewConfig(routeScope *authkratosroutes.RouteScope, passRate float64) *Config {
 	return &Config{
-		selectPath: selectPath,
-		rate:       passRate,
-		debugMode:  authkratos.GetDebugMode(),
+		routeScope:     routeScope,
+		rate:           passRate,
+		apmSpanName:    "",
+		apmMatchSuffix: "-match", // 默认后缀
+		debugMode:      authkratos.GetDebugMode(),
 	}
 }
 
@@ -33,39 +48,81 @@ func (c *Config) WithDebugMode(debugMode bool) *Config {
 	return c
 }
 
+// WithDefaultApmSpanName sets default APM span name
+// Default name: pass-kratos-random
+//
+// WithDefaultApmSpanName 使用默认的 APM span 名称
+// 默认名称: pass-kratos-random
+func (c *Config) WithDefaultApmSpanName() *Config {
+	return c.WithApmSpanName("pass-kratos-random")
+}
+
+// WithApmSpanName sets APM span name
+// Empty value disables APM tracing
+//
+// WithApmSpanName 设置 APM span 名称
+// 为空时不启动 APM 追踪
+func (c *Config) WithApmSpanName(apmSpanName string) *Config {
+	c.apmSpanName = must.Nice(apmSpanName)
+	return c
+}
+
+// WithApmMatchSuffix sets APM match span suffix
+// Default value is -match
+//
+// WithApmMatchSuffix 设置 APM match span 后缀
+// 默认为 -match
+func (c *Config) WithApmMatchSuffix(apmMatchSuffix string) *Config {
+	c.apmMatchSuffix = must.Nice(apmMatchSuffix)
+	return c
+}
+
+// NewMiddleware creates middleware that randomly fails requests with configured probability
+//
 // NewMiddleware 让接口有一定概率失败
 func NewMiddleware(cfg *Config, logger log.Logger) middleware.Middleware {
-	LOG := log.NewHelper(logger)
-	LOG.Infof(
-		"pass-kratos-random: new middleware include=%s operations=%d rate=%v",
-		cfg.selectPath.SelectSide,
-		len(cfg.selectPath.Operations),
+	slog := log.NewHelper(logger)
+	slog.Infof(
+		"pass-kratos-random: new middleware side=%v operations=%d rate=%v",
+		cfg.routeScope.Side,
+		len(cfg.routeScope.OperationSet),
 		cfg.rate,
 	)
 	if cfg.debugMode {
-		LOG.Debugf("pass-kratos-random: new middleware select-path: %s", neatjsons.S(cfg.selectPath))
+		slog.Debugf("pass-kratos-random: new middleware route-scope: %s", neatjsons.S(cfg.routeScope))
 	}
 	return selector.Server(middlewareFunc(cfg, logger)).Match(matchFunc(cfg, logger)).Build()
 }
 
 func matchFunc(cfg *Config, logger log.Logger) selector.MatchFunc {
-	LOG := log.NewHelper(logger)
+	slog := log.NewHelper(logger)
 
 	return func(ctx context.Context, operation string) bool {
-		if match := cfg.selectPath.Match(operation); !match {
+		// 如果配置了 APM span 名称，则启动 APM 追踪
+		if cfg.apmSpanName != "" {
+			apmTx := apm.TransactionFromContext(ctx)
+			span := apmTx.StartSpan(cfg.apmSpanName+cfg.apmMatchSuffix, "app", nil)
+			defer span.End()
+		}
+
+		if match := cfg.routeScope.Match(operation); !match {
 			if cfg.debugMode {
-				LOG.Debugf("pass-kratos-random: operation=%s include=%v match=%d next -> skip random", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
+				slog.Debugf("pass-kratos-random: operation=%s side=%v match=%d next -> skip random", operation, cfg.routeScope.Side, utils.BooleanToNum(match))
 			}
 			return false
 		}
-		ratePass := rand.Float64() < cfg.rate //设置rate=0.6就是有60%的概率通过，设置rate=1或者>1就是肯定通过，设置为0或负数就必然不通过
+		// 设置rate=0.6就是有60%的概率通过
+		// 设置rate=1或者>1就是肯定通过，设置为0或负数就必然不通过
+		ratePass := rand.Float64() < cfg.rate
 
-		match := !ratePass //是否进入拦截器，拦截器会拦截请求，因此这里求逆值，通过的不拦截，不通过的拦截
+		// 是否进入拦截器，拦截器会拦截请求
+		// 因此这里求逆值，通过的不拦截，不通过的拦截
+		match := !ratePass
 		if cfg.debugMode {
 			if match {
-				LOG.Debugf("pass-kratos-random: operation=%s include=%v match=%d next -> goto unavailable", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
+				slog.Debugf("pass-kratos-random: operation=%s side=%v match=%d next -> goto unavailable", operation, cfg.routeScope.Side, utils.BooleanToNum(match))
 			} else {
-				LOG.Debugf("pass-kratos-random: operation=%s include=%v match=%d skip -- skip unavailable", operation, cfg.selectPath.SelectSide, utils.BooleanToNum(match))
+				slog.Debugf("pass-kratos-random: operation=%s side=%v match=%d skip -- skip unavailable", operation, cfg.routeScope.Side, utils.BooleanToNum(match))
 			}
 		}
 		return match
@@ -73,12 +130,19 @@ func matchFunc(cfg *Config, logger log.Logger) selector.MatchFunc {
 }
 
 func middlewareFunc(cfg *Config, logger log.Logger) middleware.Middleware {
-	LOG := log.NewHelper(logger)
+	slog := log.NewHelper(logger)
 
 	return func(handleFunc middleware.Handler) middleware.Handler {
 		return func(ctx context.Context, req interface{}) (interface{}, error) {
+			// 如果配置了 APM span 名称，则启动 APM 追踪
+			if cfg.apmSpanName != "" {
+				apmTx := apm.TransactionFromContext(ctx)
+				span := apmTx.StartSpan(cfg.apmSpanName, "app", nil)
+				defer span.End()
+			}
+
 			if cfg.debugMode {
-				LOG.Debugf("pass-kratos-random: random match unavailable")
+				slog.Debugf("pass-kratos-random: random match unavailable")
 			}
 			//当已经命中概率的时候，就直接返回错误
 			return nil, errors.ServiceUnavailable("RANDOM_RATE_UNAVAILABLE", "pass-kratos-random: random unavailable")
