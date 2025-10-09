@@ -38,14 +38,14 @@ var (
 
 type usernameMark struct{}
 
-// someStubService implements SomeStub service for auth middleware testing
-// someStubService 实现 SomeStub 服务用于认证中间件测试
+// someStubService implements SomeStub service to test auth middleware
+// someStubService 实现 SomeStub 服务以测试认证中间件
 type someStubService struct {
 	somestub.UnimplementedSomeStubServer
 }
 
 // SelectSomething handles query operations without authentication requirement
-// Tests EXCLUDE mode where certain operations are explicitly excluded from auth
+// Tests EXCLUDE mode where certain operations skip auth check
 //
 // SelectSomething 处理查询操作，不需要认证
 // 测试 EXCLUDE 模式，某些操作明确排除认证
@@ -56,7 +56,7 @@ func (s *someStubService) SelectSomething(ctx context.Context, req *wrapperspb.S
 }
 
 // CreateSomething handles write operations that require authentication
-// Returns guest info from context to verify context injection works
+// Returns guest info from context to check context injection works
 // Tests INCLUDE mode where operations require authentication
 //
 // CreateSomething 处理需要认证的写操作
@@ -76,7 +76,7 @@ func (s *someStubService) CreateSomething(ctx context.Context, req *wrapperspb.S
 }
 
 // UpdateSomething handles write operations that require authentication
-// Returns guest info from context to verify context injection works
+// Returns guest info from context to check context injection works
 // Tests INCLUDE mode where operations require authentication
 //
 // UpdateSomething 处理需要认证的写操作
@@ -141,6 +141,7 @@ func TestMain(m *testing.M) {
 		),
 		http.Timeout(time.Minute),
 	)
+	httpPort = utils.ExtractPort(rese.P1(httpSrv.Endpoint()))
 
 	// Create gRPC server with dynamic port
 	// 使用动态端口创建 gRPC 服务器
@@ -152,9 +153,10 @@ func TestMain(m *testing.M) {
 		),
 		grpc.Timeout(time.Minute),
 	)
+	grpcPort = utils.ExtractPort(rese.P1(grpcSrv.Endpoint()))
 
-	// Create test service to verify auth middleware behavior
-	// 创建测试服务以验证认证中间件行为
+	// Create test service to check auth middleware actions
+	// 创建测试服务以检查认证中间件行为
 	stubService := &someStubService{}
 	somestub.RegisterSomeStubHTTPServer(httpSrv, stubService)
 	somestub.RegisterSomeStubServer(grpcSrv, stubService)
@@ -171,14 +173,9 @@ func TestMain(m *testing.M) {
 	}()
 	defer rese.F0(app.Stop)
 
-	// Wait for server to start and extract actual listening ports
-	// 等待服务器启动并获取实际监听端口
+	// Wait a short time to ensure the server has started
+	// 等待片刻以确保服务器已启动
 	time.Sleep(time.Millisecond * 200)
-
-	// Extract actual port from server endpoint
-	// 从服务器端点提取实际端口
-	httpPort = utils.ExtractPort(rese.P1(httpSrv.Endpoint()))
-	grpcPort = utils.ExtractPort(rese.P1(grpcSrv.Endpoint()))
 
 	zaplog.LOG.Info("Starting test servers with dynamic ports",
 		zap.String("http_port", httpPort),
@@ -252,7 +249,7 @@ func TestAuthSimple_CreateSomething_InvalidToken_HTTP(t *testing.T) {
 	headers := nethttp.Header{}
 	headers.Set("Authorization", wrongToken)
 
-	// Should fail with UNAUTHORIZED
+	// Should return UNAUTHORIZED
 	// 应返回 UNAUTHORIZED 错误
 	_, err := stubClient.CreateSomething(ctx, wrapperspb.String(message), http.Header(&headers))
 	require.Error(t, err)
@@ -276,7 +273,7 @@ func TestAuthSimple_CreateSomething_MissingToken_HTTP(t *testing.T) {
 	ctx := context.Background()
 	message := uuid.New().String()
 
-	// Should fail with UNAUTHORIZED
+	// Should return UNAUTHORIZED
 	// 应返回 UNAUTHORIZED 错误
 	_, err := stubClient.CreateSomething(ctx, wrapperspb.String(message))
 	require.Error(t, err)
@@ -287,8 +284,8 @@ func TestAuthSimple_CreateSomething_MissingToken_HTTP(t *testing.T) {
 }
 
 func TestAuthSimple_UpdateSomething_ValidToken_HTTP(t *testing.T) {
-	// Test another protected endpoint with valid token
-	// 测试另一个带有效令牌的受保护端点
+	// Test second protected endpoint with valid token
+	// 测试第二个带有效令牌的受保护端点
 	conn := rese.P1(http.NewClient(
 		context.Background(),
 		http.WithMiddleware(recovery.Recovery()),

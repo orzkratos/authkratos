@@ -144,6 +144,7 @@ func TestMain(m *testing.M) {
 		),
 		http.Timeout(time.Minute),
 	)
+	httpPort = utils.ExtractPort(rese.P1(httpSrv.Endpoint()))
 
 	// Create gRPC server with dynamic port
 	// 使用动态端口创建 gRPC 服务器
@@ -155,6 +156,7 @@ func TestMain(m *testing.M) {
 		),
 		grpc.Timeout(time.Minute),
 	)
+	grpcPort = utils.ExtractPort(rese.P1(grpcSrv.Endpoint()))
 
 	// Create test service to verify periodic sampling middleware behavior
 	// 创建测试服务以验证周期采样中间件行为
@@ -174,14 +176,9 @@ func TestMain(m *testing.M) {
 	}()
 	defer rese.F0(app.Stop)
 
-	// Wait for server to start and extract actual listening ports
-	// 等待服务器启动并获取实际监听端口
+	// Wait a short time to ensure the server has started
+	// 等待片刻以确保服务器已启动
 	time.Sleep(time.Millisecond * 200)
-
-	// Extract actual port from server endpoint
-	// 从服务器端点提取实际端口
-	httpPort = utils.ExtractPort(rese.P1(httpSrv.Endpoint()))
-	grpcPort = utils.ExtractPort(rese.P1(grpcSrv.Endpoint()))
 
 	zaplog.LOG.Info("Starting test servers with dynamic ports",
 		zap.String("http_port", httpPort),
