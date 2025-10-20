@@ -250,16 +250,26 @@ fieldName := cfg.GetFieldName() // "X-API-Token"
 
 ### Token Formats
 
-The `authkratostokens` package supports various token formats:
+The `authkratostokens` package supports various token formats, each must be explicitly enabled:
 
 ```go
 tokens := map[string]string{
     "alice": "secret-token",
 }
 
-// Accepts these formats:
+// Enable token types you need (disabled as default, must enable each type)
+cfg := authkratostokens.NewConfig(routeScope, tokens).
+    WithEnableSimpleType().  // Enable simple format: "secret-token"
+    WithEnableBearerType().  // Enable Bearer format: "Bearer secret-token"
+    WithEnableBase64Type()   // Enable Basic Auth: "Basic YWxpY2U6c2VjcmV0LXRva2Vu"
+
+// Can enable specific types, e.g., Bearer:
+cfg := authkratostokens.NewConfig(routeScope, tokens).
+    WithEnableBearerType()  // Accept just "Bearer secret-token" format
+
+// Three token formats:
 // 1. Simple: "secret-token"
-// 2. Authorization: "Bearer secret-token"
+// 2. Bearer: "Bearer secret-token"
 // 3. Basic Auth: "Basic YWxpY2U6c2VjcmV0LXRva2Vu" (base64 of "alice:secret-token")
 ```
 

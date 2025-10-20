@@ -1,5 +1,5 @@
 // Package matchkratosrandom: Probabilistic request sampling match function with configurable rate
-// Provides random match control based on configured odds with the selection pattern
+// Provides random match based on configured odds with the selection pattern
 // Returns match function that selects requests at random to pass through to wrapped middleware
 // Good fit in sampling, staged rollout, and A/B testing scenarios
 //
@@ -56,7 +56,7 @@ func (c *Config) WithDefaultApmSpanName() *Config {
 }
 
 // WithApmSpanName sets APM span name
-// Empty value disables APM tracing
+// Blank value disables APM tracing
 //
 // WithApmSpanName 设置 APM span 名称
 // 为空时不启动 APM 追踪
@@ -97,8 +97,8 @@ func NewMatchFunc(cfg *Config, logger log.Logger) selector.MatchFunc {
 			return false
 		}
 
-		// matchRate=0.6 means 60% requests will match (return true)
-		// matchRate=1 or >1 means always match, matchRate=0 or <0 means never match
+		// matchRate=0.6 means 60% requests match (return true)
+		// matchRate=1 or >1 means always match, matchRate=0 or <0 means none match
 		//
 		// matchRate=0.6 表示 60% 的请求会匹配（返回 true）
 		// matchRate=1 或 >1 表示总是匹配，matchRate=0 或 <0 表示永不匹配

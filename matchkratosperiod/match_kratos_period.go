@@ -1,6 +1,6 @@
 // Package matchkratosperiod: Periodic request sampling middleware with count-based throttling
 // Provides predictive request sampling with configurable period count
-// Passes each Nth request while blocking others with optional first-match support
+// Passes each Nth request while blocking others with first-match support if needed
 // Good fit in load reduction, sampling, and managed traffic shaping scenarios
 //
 // matchkratosperiod: 周期性请求采样中间件，基于计数器的限流
@@ -64,7 +64,7 @@ func (c *Config) WithDefaultApmSpanName() *Config {
 }
 
 // WithApmSpanName sets APM span name
-// Empty value disables APM tracing
+// Blank value disables APM tracing
 //
 // WithApmSpanName 设置 APM span 名称
 // 为空时不启动 APM 追踪

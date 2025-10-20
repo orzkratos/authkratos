@@ -250,16 +250,26 @@ fieldName := cfg.GetFieldName() // "X-API-Token"
 
 ### 令牌格式
 
-`authkratostokens` 包支持多种令牌格式：
+`authkratostokens` 包支持多种令牌格式，每种格式需要显式启用：
 
 ```go
 tokens := map[string]string{
     "alice": "secret-token",
 }
 
-// 接受这些格式：
+// 启用需要的令牌类型（默认都关闭，需要显式启用）
+cfg := authkratostokens.NewConfig(routeScope, tokens).
+    WithEnableSimpleType().  // 启用简单格式："secret-token"
+    WithEnableBearerType().  // 启用 Bearer 格式："Bearer secret-token"
+    WithEnableBase64Type()   // 启用 Basic Auth："Basic YWxpY2U6c2VjcmV0LXRva2Vu"
+
+// 可以只启用部分类型，如只启用 Bearer：
+cfg := authkratostokens.NewConfig(routeScope, tokens).
+    WithEnableBearerType()  // 仅接受 "Bearer secret-token" 格式
+
+// 三种令牌格式：
 // 1. 简单格式："secret-token"
-// 2. Authorization 格式："Bearer secret-token"
+// 2. Bearer 格式："Bearer secret-token"
 // 3. Basic Auth："Basic YWxpY2U6c2VjcmV0LXRva2Vu" ("alice:secret-token" 的 base64)
 ```
 

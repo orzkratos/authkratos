@@ -1,5 +1,5 @@
 // Package passkratosrandom: Probabilistic request blocking middleware with chaos testing support
-// Provides random pass-through rate control with configurable odds
+// Provides random pass-through rate with configurable odds
 // Good fit in testing, chaos engineering, and staged rollout scenarios
 // Enables blocking specific request ratio within designated route scope
 //
@@ -77,16 +77,17 @@ func (c *Config) WithApmMatchSuffix(apmMatchSuffix string) *Config {
 	return c
 }
 
-// NewMiddleware creates middleware that randomly fails requests with configured probability
+// NewMiddleware creates middleware that fails requests with configured rate
 //
 // NewMiddleware 让接口有一定概率失败
 func NewMiddleware(cfg *Config, logger log.Logger) middleware.Middleware {
 	slog := log.NewHelper(logger)
 	slog.Infof(
-		"pass-kratos-random: new middleware side=%v operations=%d rate=%v",
+		"pass-kratos-random: new middleware side=%v operations=%d rate=%v debug-mode=%v",
 		cfg.routeScope.Side,
 		len(cfg.routeScope.OperationSet),
 		cfg.rate,
+		utils.BooleanToNum(cfg.debugMode),
 	)
 	if cfg.debugMode {
 		slog.Debugf("pass-kratos-random: new middleware route-scope: %s", neatjsons.S(cfg.routeScope))

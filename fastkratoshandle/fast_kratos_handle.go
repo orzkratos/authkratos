@@ -78,8 +78,8 @@ func (c *Config) WithApmMatchSuffix(apmMatchSuffix string) *Config {
 
 // NewMiddleware creates middleware with shorter timeout on specific routes
 // In practice extending timeout is more common than shortening
-// Since ctx timeout can only shorten not extend, use exclusion filtering approach:
-// Set very long timeout on entire service, then limit other routes with shorter timeouts
+// Since ctx timeout can just shorten not extend, use exclusion filtering approach:
+// Set long timeout on entire service, then limit other routes with shorter timeouts
 // Use EXCLUDE mode to exclude routes needing long timeout, others get fast timeout
 // This satisfies the "extend timeout" requirement
 //
@@ -97,7 +97,7 @@ func NewMiddleware(cfg *Config, logger log.Logger) middleware.Middleware {
 		cfg.routeScope.Side,
 		len(cfg.routeScope.OperationSet),
 		cfg.newTimeout,
-		cfg.debugMode,
+		utils.BooleanToNum(cfg.debugMode),
 	)
 	if cfg.debugMode {
 		slog.Debugf("fast-kratos-handle: new middleware route-scope: %s", neatjsons.S(cfg.routeScope))

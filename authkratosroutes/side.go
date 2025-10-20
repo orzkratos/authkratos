@@ -5,8 +5,8 @@ package authkratosroutes
 type SelectSide string
 
 const (
-	INCLUDE SelectSide = "INCLUDE" // Match only specified operations // 仅匹配指定操作
-	EXCLUDE SelectSide = "EXCLUDE" // Match all except specified operations // 匹配除指定操作外的所有操作
+	INCLUDE SelectSide = "INCLUDE" // Match specified operations // 仅匹配指定操作
+	EXCLUDE SelectSide = "EXCLUDE" // Match except specified operations // 匹配除指定操作外的所有操作
 )
 
 // Opposite returns the opposite side

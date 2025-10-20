@@ -1,5 +1,5 @@
 // Package authkratostokens: Pre-configured token-based authentication middleware
-// Provides ready-to-use auth with username-token map and various token format support
+// Provides out-of-box auth with username-token map and various token format support
 // Supports simple tokens, authorization tokens, and Base64-encoded Basic Auth
 // Auto-injects authenticated username into request context
 //
@@ -29,12 +29,15 @@ import (
 )
 
 type Config struct {
-	routeScope     *authkratosroutes.RouteScope
-	authTokens     map[string]string
-	fieldName      string
-	apmSpanName    string // APM span 名称，为空时不启动 APM 追踪
-	apmMatchSuffix string // APM match span 后缀，默认为 -match
-	debugMode      bool
+	routeScope       *authkratosroutes.RouteScope
+	authTokens       map[string]string
+	fieldName        string
+	apmSpanName      string // APM span 名称，为空时不启动 APM 追踪
+	apmMatchSuffix   string // APM match span 后缀，默认为 -match
+	debugMode        bool
+	enableSimpleType bool // Enable simple token type // 启用简单令牌类型
+	enableBearerType bool // Enable Bearer token type // 启用 Bearer 令牌类型
+	enableBase64Type bool // Enable Base64 Basic Auth type // 启用 Base64 Basic Auth 类型
 }
 
 func NewConfig(
@@ -109,6 +112,36 @@ func (c *Config) WithApmMatchSuffix(apmMatchSuffix string) *Config {
 	return c
 }
 
+// WithEnableSimpleType enables simple token type authentication
+// Token format: "secret-token-123"
+//
+// WithEnableSimpleType 启用简单令牌类型认证
+// 令牌格式: "secret-token-123"
+func (c *Config) WithEnableSimpleType() *Config {
+	c.enableSimpleType = true
+	return c
+}
+
+// WithEnableBearerType enables Bearer token type authentication
+// Token format: "Bearer secret-token-123"
+//
+// WithEnableBearerType 启用 Bearer 令牌类型认证
+// 令牌格式: "Bearer secret-token-123"
+func (c *Config) WithEnableBearerType() *Config {
+	c.enableBearerType = true
+	return c
+}
+
+// WithEnableBase64Type enables Base64 Basic Auth type authentication
+// Token format: "Basic base64(username:password)"
+//
+// WithEnableBase64Type 启用 Base64 Basic Auth 类型认证
+// 令牌格式: "Basic base64(username:password)"
+func (c *Config) WithEnableBase64Type() *Config {
+	c.enableBase64Type = true
+	return c
+}
+
 func (c *Config) GetAuthTokens() map[string]string {
 	if c != nil {
 		return c.authTokens
@@ -138,11 +171,14 @@ func (c *Config) GetMapTokens() map[string]string {
 func NewMiddleware(cfg *Config, logger log.Logger) middleware.Middleware {
 	slog := log.NewHelper(logger)
 	slog.Infof(
-		"auth-kratos-tokens: new middleware field-name=%v auth-tokens=%d side=%v operations=%d",
+		"auth-kratos-tokens: new middleware field-name=%v auth-tokens=%d side=%v operations=%d enable-simple=%v enable-bearer=%v enable-base64=%v",
 		cfg.fieldName,
 		len(cfg.authTokens),
 		cfg.routeScope.Side,
 		len(cfg.routeScope.OperationSet),
+		utils.BooleanToNum(cfg.enableSimpleType),
+		utils.BooleanToNum(cfg.enableBearerType),
+		utils.BooleanToNum(cfg.enableBase64Type),
 	)
 	if cfg.debugMode {
 		slog.Debugf("auth-kratos-tokens: new middleware field-name=%v route-scope: %s", cfg.fieldName, neatjsons.S(cfg.routeScope))
@@ -176,10 +212,24 @@ func matchFunc(cfg *Config, logger log.Logger) selector.MatchFunc {
 func middlewareFunc(cfg *Config, logger log.Logger) middleware.Middleware {
 	slog := log.NewHelper(logger)
 
+	// Build token maps based on enabled types
+	// Initialize blank maps as default
+	//
+	// 根据启用的类型构建令牌映射
+	// 默认初始化为空 map 以确保安全
 	mapBox := &authTokenMapBox{
-		simpleTypeToUsername: buildSimpleTokenToUsername(cfg.authTokens),
-		bearerTypeToUsername: buildBearerTokenToUsername(cfg.authTokens),
-		base64TypeToUsername: buildBase64TokenToUsername(cfg.authTokens),
+		simpleTypeToUsername: make(map[string]string),
+		bearerTypeToUsername: make(map[string]string),
+		base64TypeToUsername: make(map[string]string),
+	}
+	if cfg.enableSimpleType {
+		mapBox.simpleTypeToUsername = buildSimpleTokenToUsername(cfg.authTokens)
+	}
+	if cfg.enableBearerType {
+		mapBox.bearerTypeToUsername = buildBearerTokenToUsername(cfg.authTokens)
+	}
+	if cfg.enableBase64Type {
+		mapBox.base64TypeToUsername = buildBase64TokenToUsername(cfg.authTokens)
 	}
 
 	return func(handleFunc middleware.Handler) middleware.Handler {
@@ -217,6 +267,13 @@ func middlewareFunc(cfg *Config, logger log.Logger) middleware.Middleware {
 }
 
 func checkAuthToken(cfg *Config, mapBox *authTokenMapBox, token string, slog *log.Helper) (string, *errors.Error) {
+	if !cfg.enableSimpleType && !cfg.enableBearerType && !cfg.enableBase64Type {
+		if cfg.debugMode {
+			slog.Debugf("auth-kratos-tokens: check token (no token types enabled, must enable at least one)")
+		}
+		return "", errors.Unauthorized("UNAUTHORIZED", "auth-kratos-tokens: no token type enabled")
+	}
+
 	if username, ok := mapBox.simpleTypeToUsername[token]; ok {
 		if cfg.debugMode {
 			slog.Debugf("auth-kratos-tokens: simple-type request username:%v quick pass", username)

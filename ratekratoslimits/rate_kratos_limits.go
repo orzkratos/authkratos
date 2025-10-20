@@ -1,6 +1,6 @@
 // Package ratekratoslimits: Redis-backed distributed rate limiting middleware
 // Provides production-grade rate limiting with Redis persistence and context-based ID extraction
-// Supports flexible rate limit configurations with distinct throttling capabilities
+// Supports flexible rate limit configurations with distinct throttling options
 // Integrates with route scope filtering and APM tracing
 //
 // ratekratoslimits: 基于 Redis 的分布式速率限制中间件
@@ -68,7 +68,7 @@ func (c *Config) WithDefaultApmSpanName() *Config {
 }
 
 // WithApmSpanName sets APM span name
-// Empty value disables APM tracing
+// Blank value disables APM tracing
 //
 // WithApmSpanName 设置 APM span 名称
 // 为空时不启动 APM 追踪
@@ -94,7 +94,7 @@ func NewMiddleware(cfg *Config, logger log.Logger) middleware.Middleware {
 		cfg.routeScope.Side,
 		len(cfg.routeScope.OperationSet),
 		cfg.redisLimit.String(),
-		cfg.debugMode,
+		utils.BooleanToNum(cfg.debugMode),
 	)
 	if cfg.debugMode {
 		slog.Debugf("rate-kratos-limits: new middleware route-scope: %s", neatjsons.S(cfg.routeScope))

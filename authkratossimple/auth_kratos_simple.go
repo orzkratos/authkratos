@@ -27,7 +27,7 @@ import (
 
 // CheckTokenAndSetCtxFunc validates auth token and injects account data into context
 // Parameters: ctx - current request context, token - authentication token
-// Returns: new context (with optional account data) plus validation result
+// Returns: new context (with account data if present) and validation status
 // On success, account data gets injected into context accessible to downstream handlers
 //
 // CheckTokenAndSetCtxFunc 验证认证令牌并将用户信息注入上下文
@@ -130,7 +130,7 @@ func NewMiddleware(cfg *Config, logger log.Logger) middleware.Middleware {
 		cfg.fieldName,
 		cfg.routeScope.Side,
 		len(cfg.routeScope.OperationSet),
-		cfg.debugMode,
+		utils.BooleanToNum(cfg.debugMode),
 	)
 	if cfg.debugMode {
 		slog.Debugf("auth-kratos-simple: new middleware field-name=%v route-scope: %s", cfg.fieldName, neatjsons.S(cfg.routeScope))

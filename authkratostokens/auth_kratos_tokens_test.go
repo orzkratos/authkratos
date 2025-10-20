@@ -115,10 +115,16 @@ func TestMain(m *testing.M) {
 	)
 
 	// Create auth config with username-token map
+	// Enable all three token types to test all authentication methods
+	//
 	// 使用用户名-令牌映射创建认证配置
+	// 启用所有三种令牌类型以测试所有认证方式
 	authConfig := authkratostokens.NewConfig(routeScope, usernameToTokenMap).
 		WithFieldName("Authorization").
-		WithDebugMode(true)
+		WithDebugMode(true).
+		WithEnableSimpleType().
+		WithEnableBearerType().
+		WithEnableBase64Type()
 
 	// Create auth middleware
 	// 创建认证中间件

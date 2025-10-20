@@ -21,7 +21,7 @@ type RouteScope struct {
 	OperationSet map[Operation]bool // Set of operations to match // 需要匹配的操作集合
 }
 
-// NewInclude creates a RouteScope that matches only specified operations
+// NewInclude creates a RouteScope that matches specified operations
 // NewInclude 创建仅匹配指定操作的 RouteScope
 func NewInclude(operations ...Operation) *RouteScope {
 	return &RouteScope{
