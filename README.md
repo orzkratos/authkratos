@@ -12,6 +12,7 @@ Kratos authentication middleware collection with route scope management and APM 
 ---
 
 <!-- TEMPLATE (EN) BEGIN: LANGUAGE NAVIGATION -->
+
 ## CHINESE README
 
 [中文说明](README.zh.md)
@@ -20,11 +21,11 @@ Kratos authentication middleware collection with route scope management and APM 
 ## Main Features
 
 🎯 **Token Authentication**: Simple and pre-configured token-based auth with custom validation
-⚡ **Route Scope Control**: Flexible INCLUDE/EXCLUDE mode route filtering
+⚡ **Route Scope Filtering**: Flexible INCLUDE/EXCLUDE mode route matching
 🔄 **Rate Limiting**: Redis-backed distributed rate limiting with context-based ID extraction
 🌍 **Random Sampling**: Probabilistic request sampling and blocking with configurable odds
 📋 **Timeout Management**: Selective timeout override on specific routes
-⏱️ **Periodic Throttling**: Counter-based deterministic request sampling
+⏱️ **Periodic Throttling**: Count-based deterministic request sampling
 🔍 **APM Tracing**: Built-in APM span tracking with configurable naming
 
 ## Installation
@@ -51,7 +52,7 @@ cfg := authkratostokens.NewConfig(
     ),
     map[string]string{
         "alice": "secret-token-123",
-        "bob":   "another-token-456",
+        "bruce": "another-token-456",
     },
 )
 
@@ -250,7 +251,7 @@ fieldName := cfg.GetFieldName() // "X-API-Token"
 
 ### Token Formats
 
-The `authkratostokens` package supports various token formats, each must be explicitly enabled:
+The `authkratostokens` package supports various token formats, each must be enabled:
 
 ```go
 tokens := map[string]string{
@@ -303,20 +304,20 @@ go test -v ./authkratostokens/...
 See the [internal/examples](internal/) DIR on detailed usage examples.
 
 <!-- TEMPLATE (EN) BEGIN: STANDARD PROJECT FOOTER -->
-<!-- VERSION 2025-09-26 07:39:27.188023 +0000 UTC -->
+<!-- VERSION 2025-11-25 03:52:28.131064 +0000 UTC -->
 
 ## 📄 License
 
-MIT License. See [LICENSE](LICENSE).
+MIT License - see [LICENSE](LICENSE).
 
 ---
 
-## 🤝 Contributing
+## 💬 Contact & Feedback
 
 Contributions are welcome! Report bugs, suggest features, and contribute code:
 
-- 🐛 **Found a mistake?** Open an issue on GitHub with reproduction steps
-- 💡 **Have a feature idea?** Create an issue to discuss the suggestion
+- 🐛 **Mistake reports?** Open an issue on GitHub with reproduction steps
+- 💡 **Fresh ideas?** Create an issue to discuss
 - 📖 **Documentation confusing?** Report it so we can improve
 - 🚀 **Need new features?** Share the use cases to help us understand requirements
 - ⚡ **Performance issue?** Help us optimize through reporting slow operations
@@ -337,7 +338,7 @@ New code contributions, follow this process:
 4. **Branch**: Create a feature branch (`git checkout -b feature/xxx`).
 5. **Code**: Implement the changes with comprehensive tests
 6. **Testing**: (Golang project) Ensure tests pass (`go test ./...`) and follow Go code style conventions
-7. **Documentation**: Update documentation to support client-facing changes and use significant commit messages
+7. **Documentation**: Update documentation to support client-facing changes
 8. **Stage**: Stage changes (`git add .`)
 9. **Commit**: Commit changes (`git commit -m "Add feature xxx"`) ensuring backward compatible code
 10. **Push**: Push to the branch (`git push origin feature/xxx`).
@@ -367,3 +368,4 @@ Welcome to contribute to this project via submitting merge requests and reportin
 ## GitHub Stars
 
 [![Stargazers](https://starchart.cc/orzkratos/authkratos.svg?variant=adaptive)](https://starchart.cc/orzkratos/authkratos)
+

@@ -12,6 +12,7 @@ Kratos 认证中间件集合，支持路由范围管理和 APM 追踪。
 ---
 
 <!-- TEMPLATE (ZH) BEGIN: LANGUAGE NAVIGATION -->
+
 ## 英文文档
 
 [ENGLISH README](README.md)
@@ -20,7 +21,7 @@ Kratos 认证中间件集合，支持路由范围管理和 APM 追踪。
 ## 核心特性
 
 🎯 **令牌认证**: 简单和预配置的令牌认证，支持自定义验证
-⚡ **路由范围控制**: 灵活的 INCLUDE/EXCLUDE 模式路由过滤
+⚡ **路由范围过滤**: 灵活的 INCLUDE/EXCLUDE 模式路由匹配
 🔄 **速率限制**: 基于 Redis 的分布式速率限制，支持基于上下文的 ID 提取
 🌍 **随机采样**: 概率性请求采样和阻断，支持可配置的概率
 📋 **超时管理**: 特定路由的选择性超时覆盖
@@ -51,7 +52,7 @@ cfg := authkratostokens.NewConfig(
     ),
     map[string]string{
         "alice": "secret-token-123",
-        "bob":   "another-token-456",
+        "bruce": "another-token-456",
     },
 )
 
@@ -303,23 +304,23 @@ go test -v ./authkratostokens/...
 查看 [internal/examples](internal/) 目录获取详细的使用示例。
 
 <!-- TEMPLATE (ZH) BEGIN: STANDARD PROJECT FOOTER -->
-<!-- VERSION 2025-09-26 07:39:27.188023 +0000 UTC -->
+<!-- VERSION 2025-11-25 03:52:28.131064 +0000 UTC -->
 
 ## 📄 许可证类型
 
-MIT 许可证。详见 [LICENSE](LICENSE)。
+MIT 许可证 - 详见 [LICENSE](LICENSE)。
 
 ---
 
-## 🤝 项目贡献
+## 💬 联系与反馈
 
 非常欢迎贡献代码！报告 BUG、建议功能、贡献代码：
 
-- 🐛 **发现问题？** 在 GitHub 上提交问题并附上重现步骤
-- 💡 **功能建议？** 创建 issue 讨论您的想法
-- 📖 **文档疑惑？** 报告问题，帮助我们改进文档
+- 🐛 **问题报告？** 在 GitHub 上提交问题并附上重现步骤
+- 💡 **新颖思路？** 创建 issue 讨论
+- 📖 **文档疑惑？** 报告问题，帮助我们完善文档
 - 🚀 **需要功能？** 分享使用场景，帮助理解需求
-- ⚡ **性能瓶颈？** 报告慢操作，帮助我们优化性能
+- ⚡ **性能瓶颈？** 报告慢操作，协助解决性能问题
 - 🔧 **配置困扰？** 询问复杂设置的相关问题
 - 📢 **关注进展？** 关注仓库以获取新版本和功能
 - 🌟 **成功案例？** 分享这个包如何改善工作流程
@@ -337,7 +338,7 @@ MIT 许可证。详见 [LICENSE](LICENSE)。
 4. **分支**：创建功能分支（`git checkout -b feature/xxx`）
 5. **编码**：实现您的更改并编写全面的测试
 6. **测试**：（Golang 项目）确保测试通过（`go test ./...`）并遵循 Go 代码风格约定
-7. **文档**：为面向用户的更改更新文档，并使用有意义的提交消息
+7. **文档**：面向用户的更改需要更新文档
 8. **暂存**：暂存更改（`git add .`）
 9. **提交**：提交更改（`git commit -m "Add feature xxx"`）确保向后兼容的代码
 10. **推送**：推送到分支（`git push origin feature/xxx`）
@@ -349,7 +350,7 @@ MIT 许可证。详见 [LICENSE](LICENSE)。
 
 ## 🌟 项目支持
 
-非常欢迎通过提交 Merge Request 和报告问题来为此项目做出贡献。
+非常欢迎通过提交 Merge Request 和报告问题来贡献此项目。
 
 **项目支持：**
 
@@ -366,4 +367,5 @@ MIT 许可证。详见 [LICENSE](LICENSE)。
 
 ## GitHub 标星点赞
 
-[![Stargazers](https://starchart.cc/orzkratos/authkratos.svg?variant=adaptive)](https://starchart.cc/orzkratos/authkratos)
+[![标星点赞](https://starchart.cc/orzkratos/authkratos.svg?variant=adaptive)](https://starchart.cc/orzkratos/authkratos)
+

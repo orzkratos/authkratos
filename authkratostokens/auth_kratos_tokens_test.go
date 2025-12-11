@@ -94,6 +94,8 @@ func (s *someStubService) UpdateSomething(ctx context.Context, req *wrapperspb.S
 	return wrapperspb.String("updated:" + req.GetValue() + ",guest:" + username), nil
 }
 
+// TestMain sets up test environment with debug mode and starts HTTP/gRPC servers
+// TestMain 设置测试环境启用调试模式并启动 HTTP/gRPC 服务器
 func TestMain(m *testing.M) {
 	authkratos.SetDebugMode(true)
 
@@ -184,6 +186,8 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
+// TestAuthTokens_SelectSomething_NoAuth_HTTP tests public endpoint without auth via HTTP
+// TestAuthTokens_SelectSomething_NoAuth_HTTP 通过 HTTP 测试无需认证的公开端点
 func TestAuthTokens_SelectSomething_NoAuth_HTTP(t *testing.T) {
 	// Test public endpoint that does not require authentication (EXCLUDE mode)
 	// 测试不需要认证的公开端点（EXCLUDE 模式）
@@ -205,6 +209,8 @@ func TestAuthTokens_SelectSomething_NoAuth_HTTP(t *testing.T) {
 	require.Equal(t, message, resp.GetValue())
 }
 
+// TestAuthTokens_CreateSomething_SimpleToken_HTTP tests protected endpoint with simple token via HTTP
+// TestAuthTokens_CreateSomething_SimpleToken_HTTP 通过 HTTP 测试使用简单令牌的受保护端点
 func TestAuthTokens_CreateSomething_SimpleToken_HTTP(t *testing.T) {
 	// Test protected endpoint with simple token format
 	// 测试使用简单令牌格式的受保护端点
@@ -231,6 +237,8 @@ func TestAuthTokens_CreateSomething_SimpleToken_HTTP(t *testing.T) {
 	require.Equal(t, "created:"+message+",guest:"+testUsername, resp.GetValue())
 }
 
+// TestAuthTokens_CreateSomething_BearerToken_HTTP tests protected endpoint with Bearer token via HTTP
+// TestAuthTokens_CreateSomething_BearerToken_HTTP 通过 HTTP 测试使用 Bearer 令牌的受保护端点
 func TestAuthTokens_CreateSomething_BearerToken_HTTP(t *testing.T) {
 	// Test protected endpoint with Bearer token format
 	// 测试使用 Bearer 令牌格式的受保护端点
@@ -255,6 +263,8 @@ func TestAuthTokens_CreateSomething_BearerToken_HTTP(t *testing.T) {
 	require.Equal(t, "created:"+message+",guest:"+testUsername, resp.GetValue())
 }
 
+// TestAuthTokens_CreateSomething_BasicAuth_HTTP tests protected endpoint with Basic Auth via HTTP
+// TestAuthTokens_CreateSomething_BasicAuth_HTTP 通过 HTTP 测试使用 Basic Auth 的受保护端点
 func TestAuthTokens_CreateSomething_BasicAuth_HTTP(t *testing.T) {
 	// Test protected endpoint with Basic Auth format
 	// 测试使用 Basic Auth 格式的受保护端点
@@ -279,6 +289,8 @@ func TestAuthTokens_CreateSomething_BasicAuth_HTTP(t *testing.T) {
 	require.Equal(t, "created:"+message+",guest:"+testUsername, resp.GetValue())
 }
 
+// TestAuthTokens_CreateSomething_InvalidToken_HTTP tests protected endpoint with invalid token via HTTP
+// TestAuthTokens_CreateSomething_InvalidToken_HTTP 通过 HTTP 测试带无效令牌的受保护端点
 func TestAuthTokens_CreateSomething_InvalidToken_HTTP(t *testing.T) {
 	// Test protected endpoint with invalid token
 	// 测试带无效令牌的受保护端点
@@ -306,6 +318,8 @@ func TestAuthTokens_CreateSomething_InvalidToken_HTTP(t *testing.T) {
 	require.Equal(t, "UNAUTHORIZED", erk.Reason)
 }
 
+// TestAuthTokens_CreateSomething_MissingToken_HTTP tests protected endpoint without token via HTTP
+// TestAuthTokens_CreateSomething_MissingToken_HTTP 通过 HTTP 测试不带令牌的受保护端点
 func TestAuthTokens_CreateSomething_MissingToken_HTTP(t *testing.T) {
 	// Test protected endpoint without token
 	// 测试不带令牌的受保护端点
@@ -330,6 +344,8 @@ func TestAuthTokens_CreateSomething_MissingToken_HTTP(t *testing.T) {
 	require.Equal(t, "UNAUTHORIZED", erk.Reason)
 }
 
+// TestAuthTokens_UpdateSomething_SimpleToken_HTTP tests another protected endpoint with simple token via HTTP
+// TestAuthTokens_UpdateSomething_SimpleToken_HTTP 通过 HTTP 测试另一个使用简单令牌的受保护端点
 func TestAuthTokens_UpdateSomething_SimpleToken_HTTP(t *testing.T) {
 	// Test another protected endpoint with simple token
 	// 测试另一个使用简单令牌的受保护端点
@@ -354,6 +370,8 @@ func TestAuthTokens_UpdateSomething_SimpleToken_HTTP(t *testing.T) {
 	require.Equal(t, "updated:"+message+",guest:"+testUsername, resp.GetValue())
 }
 
+// TestAuthTokens_SelectSomething_NoAuth_gRPC tests public endpoint without auth via gRPC
+// TestAuthTokens_SelectSomething_NoAuth_gRPC 通过 gRPC 测试无需认证的公开端点
 func TestAuthTokens_SelectSomething_NoAuth_gRPC(t *testing.T) {
 	// Test public endpoint via gRPC without authentication
 	// 通过 gRPC 测试不需要认证的公开端点
@@ -371,4 +389,72 @@ func TestAuthTokens_SelectSomething_NoAuth_gRPC(t *testing.T) {
 	resp, err := stubClient.SelectSomething(ctx, wrapperspb.String(message))
 	require.NoError(t, err)
 	require.Equal(t, message, resp.GetValue())
+}
+
+// TestConfig_GetFieldName tests GetFieldName method
+// TestConfig_GetFieldName 测试 GetFieldName 方法
+func TestConfig_GetFieldName(t *testing.T) {
+	routeScope := authkratosroutes.NewInclude("/api.Service/Test")
+	tokens := map[string]string{"user": "pass"}
+
+	t.Run("case-1", func(t *testing.T) {
+		cfg := authkratostokens.NewConfig(routeScope, tokens)
+		require.Equal(t, "Authorization", cfg.GetFieldName())
+	})
+
+	t.Run("case-2", func(t *testing.T) {
+		cfg := authkratostokens.NewConfig(routeScope, tokens).WithFieldName("X-Token")
+		require.Equal(t, "X-Token", cfg.GetFieldName())
+	})
+}
+
+// TestConfig_GetAuthTokens tests GetAuthTokens method
+// TestConfig_GetAuthTokens 测试 GetAuthTokens 方法
+func TestConfig_GetAuthTokens(t *testing.T) {
+	routeScope := authkratosroutes.NewInclude("/api.Service/Test")
+	tokens := map[string]string{"alice": "token-a", "bruce": "token-b"}
+
+	cfg := authkratostokens.NewConfig(routeScope, tokens)
+	result := cfg.GetAuthTokens()
+	require.Len(t, result, 2)
+	require.Equal(t, "token-a", result["alice"])
+	require.Equal(t, "token-b", result["bruce"])
+}
+
+// TestConfig_CreateToken tests CreateToken method
+// TestConfig_CreateToken 测试 CreateToken 方法
+func TestConfig_CreateToken(t *testing.T) {
+	routeScope := authkratosroutes.NewInclude("/api.Service/Test")
+	tokens := map[string]string{"alice": "secret123"}
+
+	cfg := authkratostokens.NewConfig(routeScope, tokens)
+	token := cfg.CreateToken("alice")
+	require.Contains(t, token, "Basic ")
+	t.Log(token)
+}
+
+// TestConfig_GetOneToken tests GetOneToken method
+// TestConfig_GetOneToken 测试 GetOneToken 方法
+func TestConfig_GetOneToken(t *testing.T) {
+	routeScope := authkratosroutes.NewInclude("/api.Service/Test")
+	tokens := map[string]string{"alice": "secret123"}
+
+	cfg := authkratostokens.NewConfig(routeScope, tokens)
+	token := cfg.GetOneToken()
+	require.Contains(t, token, "Basic ")
+	t.Log(token)
+}
+
+// TestConfig_GetMapTokens tests GetMapTokens method
+// TestConfig_GetMapTokens 测试 GetMapTokens 方法
+func TestConfig_GetMapTokens(t *testing.T) {
+	routeScope := authkratosroutes.NewInclude("/api.Service/Test")
+	tokens := map[string]string{"alice": "pass-a", "bruce": "pass-b"}
+
+	cfg := authkratostokens.NewConfig(routeScope, tokens)
+	result := cfg.GetMapTokens()
+	require.Len(t, result, 2)
+	require.Contains(t, result["alice"], "Basic ")
+	require.Contains(t, result["bruce"], "Basic ")
+	t.Log(result)
 }

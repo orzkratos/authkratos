@@ -95,6 +95,8 @@ func (s *someStubService) UpdateSomething(ctx context.Context, req *wrapperspb.S
 	return wrapperspb.String("updated:" + req.GetValue() + ",guest:" + userID), nil
 }
 
+// TestMain sets up test environment with debug mode and starts HTTP/gRPC servers
+// TestMain 设置测试环境启用调试模式并启动 HTTP/gRPC 服务器
 func TestMain(m *testing.M) {
 	authkratos.SetDebugMode(true)
 
@@ -185,6 +187,8 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
+// TestAuthSimple_SelectSomething_NoAuth_HTTP tests public endpoint without auth via HTTP
+// TestAuthSimple_SelectSomething_NoAuth_HTTP 通过 HTTP 测试无需认证的公开端点
 func TestAuthSimple_SelectSomething_NoAuth_HTTP(t *testing.T) {
 	// Test public endpoint that does not require authentication (EXCLUDE mode)
 	// 测试不需要认证的公开端点（EXCLUDE 模式）
@@ -206,6 +210,8 @@ func TestAuthSimple_SelectSomething_NoAuth_HTTP(t *testing.T) {
 	require.Equal(t, message, resp.GetValue())
 }
 
+// TestAuthSimple_CreateSomething_ValidToken_HTTP tests protected endpoint with valid token via HTTP
+// TestAuthSimple_CreateSomething_ValidToken_HTTP 通过 HTTP 测试带有效令牌的受保护端点
 func TestAuthSimple_CreateSomething_ValidToken_HTTP(t *testing.T) {
 	// Test protected endpoint with valid token (INCLUDE mode)
 	// 测试带有效令牌的受保护端点（INCLUDE 模式）
@@ -232,6 +238,8 @@ func TestAuthSimple_CreateSomething_ValidToken_HTTP(t *testing.T) {
 	require.Equal(t, "created:"+message+",guest:account-123", resp.GetValue())
 }
 
+// TestAuthSimple_CreateSomething_InvalidToken_HTTP tests protected endpoint with invalid token via HTTP
+// TestAuthSimple_CreateSomething_InvalidToken_HTTP 通过 HTTP 测试带无效令牌的受保护端点
 func TestAuthSimple_CreateSomething_InvalidToken_HTTP(t *testing.T) {
 	// Test protected endpoint with invalid token
 	// 测试带无效令牌的受保护端点
@@ -259,6 +267,8 @@ func TestAuthSimple_CreateSomething_InvalidToken_HTTP(t *testing.T) {
 	require.Equal(t, "INVALID_TOKEN", erk.Reason)
 }
 
+// TestAuthSimple_CreateSomething_MissingToken_HTTP tests protected endpoint without token via HTTP
+// TestAuthSimple_CreateSomething_MissingToken_HTTP 通过 HTTP 测试不带令牌的受保护端点
 func TestAuthSimple_CreateSomething_MissingToken_HTTP(t *testing.T) {
 	// Test protected endpoint without token
 	// 测试不带令牌的受保护端点
@@ -283,6 +293,8 @@ func TestAuthSimple_CreateSomething_MissingToken_HTTP(t *testing.T) {
 	require.Equal(t, "UNAUTHORIZED", erk.Reason)
 }
 
+// TestAuthSimple_UpdateSomething_ValidToken_HTTP tests second protected endpoint with valid token via HTTP
+// TestAuthSimple_UpdateSomething_ValidToken_HTTP 通过 HTTP 测试第二个带有效令牌的受保护端点
 func TestAuthSimple_UpdateSomething_ValidToken_HTTP(t *testing.T) {
 	// Test second protected endpoint with valid token
 	// 测试第二个带有效令牌的受保护端点
@@ -307,6 +319,8 @@ func TestAuthSimple_UpdateSomething_ValidToken_HTTP(t *testing.T) {
 	require.Equal(t, "updated:"+message+",guest:account-123", resp.GetValue())
 }
 
+// TestAuthSimple_SelectSomething_NoAuth_gRPC tests public endpoint without auth via gRPC
+// TestAuthSimple_SelectSomething_NoAuth_gRPC 通过 gRPC 测试无需认证的公开端点
 func TestAuthSimple_SelectSomething_NoAuth_gRPC(t *testing.T) {
 	// Test public endpoint via gRPC without authentication
 	// 通过 gRPC 测试不需要认证的公开端点
@@ -324,4 +338,23 @@ func TestAuthSimple_SelectSomething_NoAuth_gRPC(t *testing.T) {
 	resp, err := stubClient.SelectSomething(ctx, wrapperspb.String(message))
 	require.NoError(t, err)
 	require.Equal(t, message, resp.GetValue())
+}
+
+// TestConfig_GetFieldName tests GetFieldName method
+// TestConfig_GetFieldName 测试 GetFieldName 方法
+func TestConfig_GetFieldName(t *testing.T) {
+	routeScope := authkratosroutes.NewInclude("/api.Service/Test")
+	checkToken := func(ctx context.Context, token string) (context.Context, *errors.Error) {
+		return ctx, nil
+	}
+
+	t.Run("case-1", func(t *testing.T) {
+		cfg := authkratossimple.NewConfig(routeScope, checkToken)
+		require.Equal(t, "Authorization", cfg.GetFieldName())
+	})
+
+	t.Run("case-2", func(t *testing.T) {
+		cfg := authkratossimple.NewConfig(routeScope, checkToken).WithFieldName("X-Auth")
+		require.Equal(t, "X-Auth", cfg.GetFieldName())
+	})
 }

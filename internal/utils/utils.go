@@ -32,19 +32,6 @@ func BasicAuth(username, password string) string {
 	return "Basic " + BasicEncode(username, password)
 }
 
-// NewKeysMap creates a boolean map from slice entries fast lookup
-// Returns map where each slice element becomes an entry with true value
-//
-// NewKeysMap 从切片键创建布尔映射用于快速查找
-// 返回所有切片元素作为键且值都是 true 的 map
-func NewKeysMap[K comparable](a []K) (mp map[K]bool) {
-	mp = make(map[K]bool, len(a))
-	for _, v := range a {
-		mp[v] = true
-	}
-	return mp
-}
-
 // NewSet creates a new set from slice fast lookup
 // Returns map where each slice element becomes an entry with true value
 //
@@ -59,7 +46,7 @@ func NewSet[T comparable](slice []T) map[T]bool {
 }
 
 // Sample selects one element at random from slice
-// Returns zero value when slice is blank
+// Returns zero value when slice is empty
 //
 // Sample 从切片中随机选择一个元素
 // 如果切片为空则返回零值
