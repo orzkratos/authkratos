@@ -124,9 +124,9 @@ func TestMain(m *testing.M) {
 	authConfig := authkratostokens.NewConfig(routeScope, usernameToTokenMap).
 		WithFieldName("Authorization").
 		WithDebugMode(true).
-		WithEnableSimpleType().
-		WithEnableBearerType().
-		WithEnableBase64Type()
+		WithSimpleEnable().
+		WithBearerEnable().
+		WithBase64Enable()
 
 	// Create auth middleware
 	// 创建认证中间件
@@ -408,51 +408,51 @@ func TestConfig_GetFieldName(t *testing.T) {
 	})
 }
 
-// TestConfig_GetAuthTokens tests GetAuthTokens method
-// TestConfig_GetAuthTokens 测试 GetAuthTokens 方法
-func TestConfig_GetAuthTokens(t *testing.T) {
+// TestConfig_GetSimpleTokens tests GetSimpleTokens method
+// TestConfig_GetSimpleTokens 测试 GetSimpleTokens 方法
+func TestConfig_GetSimpleTokens(t *testing.T) {
 	routeScope := authkratosroutes.NewInclude("/api.Service/Test")
 	tokens := map[string]string{"alice": "token-a", "bruce": "token-b"}
 
 	cfg := authkratostokens.NewConfig(routeScope, tokens)
-	result := cfg.GetAuthTokens()
+	result := cfg.GetSimpleTokens()
 	require.Len(t, result, 2)
 	require.Equal(t, "token-a", result["alice"])
 	require.Equal(t, "token-b", result["bruce"])
 }
 
-// TestConfig_CreateToken tests CreateToken method
-// TestConfig_CreateToken 测试 CreateToken 方法
-func TestConfig_CreateToken(t *testing.T) {
+// TestConfig_LookupBase64Token tests LookupBase64Token method
+// TestConfig_LookupBase64Token 测试 LookupBase64Token 方法
+func TestConfig_LookupBase64Token(t *testing.T) {
 	routeScope := authkratosroutes.NewInclude("/api.Service/Test")
 	tokens := map[string]string{"alice": "secret123"}
 
 	cfg := authkratostokens.NewConfig(routeScope, tokens)
-	token := cfg.CreateToken("alice")
+	token := cfg.LookupBase64Token("alice")
 	require.Contains(t, token, "Basic ")
 	t.Log(token)
 }
 
-// TestConfig_GetOneToken tests GetOneToken method
-// TestConfig_GetOneToken 测试 GetOneToken 方法
-func TestConfig_GetOneToken(t *testing.T) {
+// TestConfig_RandomBase64Token tests RandomBase64Token method
+// TestConfig_RandomBase64Token 测试 RandomBase64Token 方法
+func TestConfig_RandomBase64Token(t *testing.T) {
 	routeScope := authkratosroutes.NewInclude("/api.Service/Test")
 	tokens := map[string]string{"alice": "secret123"}
 
 	cfg := authkratostokens.NewConfig(routeScope, tokens)
-	token := cfg.GetOneToken()
+	token := cfg.RandomBase64Token()
 	require.Contains(t, token, "Basic ")
 	t.Log(token)
 }
 
-// TestConfig_GetMapTokens tests GetMapTokens method
-// TestConfig_GetMapTokens 测试 GetMapTokens 方法
-func TestConfig_GetMapTokens(t *testing.T) {
+// TestConfig_GetBase64Tokens tests GetBase64Tokens method
+// TestConfig_GetBase64Tokens 测试 GetBase64Tokens 方法
+func TestConfig_GetBase64Tokens(t *testing.T) {
 	routeScope := authkratosroutes.NewInclude("/api.Service/Test")
 	tokens := map[string]string{"alice": "pass-a", "bruce": "pass-b"}
 
 	cfg := authkratostokens.NewConfig(routeScope, tokens)
-	result := cfg.GetMapTokens()
+	result := cfg.GetBase64Tokens()
 	require.Len(t, result, 2)
 	require.Contains(t, result["alice"], "Basic ")
 	require.Contains(t, result["bruce"], "Basic ")

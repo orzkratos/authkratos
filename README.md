@@ -16,6 +16,7 @@ Kratos authentication middleware collection with route scope management and APM 
 ## CHINESE README
 
 [中文说明](README.zh.md)
+
 <!-- TEMPLATE (EN) END: LANGUAGE NAVIGATION -->
 
 ## Main Features
@@ -181,16 +182,16 @@ matchFunc := matchkratosperiod.NewMatchFunc(cfg, logger)
 
 ## Package Overview
 
-| Package | Purpose |
-|---------|---------|
-| `authkratostokens` | Pre-configured token auth with username-token map |
-| `authkratossimple` | Custom token validation with flexible auth logic |
-| `ratekratoslimits` | Redis-backed distributed rate limiting |
-| `passkratosrandom` | Probabilistic request blocking (chaos testing) |
-| `fastkratoshandle` | Selective timeout override on specific routes |
-| `matchkratosrandom` | Random request sampling match function |
-| `matchkratosperiod` | Periodic request sampling (each Nth request) |
-| `authkratosroutes` | Route scope matching toolkit |
+| Package             | Purpose                                           |
+| ------------------- | ------------------------------------------------- |
+| `authkratostokens`  | Pre-configured token auth with username-token map |
+| `authkratossimple`  | Custom token validation with flexible auth logic  |
+| `ratekratoslimits`  | Redis-backed distributed rate limiting            |
+| `passkratosrandom`  | Probabilistic request blocking (chaos testing)    |
+| `fastkratoshandle`  | Selective timeout override on specific routes     |
+| `matchkratosrandom` | Random request sampling match function            |
+| `matchkratosperiod` | Periodic request sampling (each Nth request)      |
+| `authkratosroutes`  | Route scope matching toolkit                      |
 
 ## Advanced Features
 
@@ -260,13 +261,13 @@ tokens := map[string]string{
 
 // Enable token types you need (disabled as default, must enable each type)
 cfg := authkratostokens.NewConfig(routeScope, tokens).
-    WithEnableSimpleType().  // Enable simple format: "secret-token"
-    WithEnableBearerType().  // Enable Bearer format: "Bearer secret-token"
-    WithEnableBase64Type()   // Enable Basic Auth: "Basic YWxpY2U6c2VjcmV0LXRva2Vu"
+    WithSimpleEnable().  // Enable simple format: "secret-token"
+    WithBearerEnable().  // Enable Bearer format: "Bearer secret-token"
+    WithBase64Enable()   // Enable Basic Auth: "Basic YWxpY2U6c2VjcmV0LXRva2Vu"
 
 // Can enable specific types, e.g., Bearer:
 cfg := authkratostokens.NewConfig(routeScope, tokens).
-    WithEnableBearerType()  // Accept just "Bearer secret-token" format
+    WithBearerEnable()  // Accept just "Bearer secret-token" format
 
 // Three token formats:
 // 1. Simple: "secret-token"
@@ -368,4 +369,3 @@ Welcome to contribute to this project via submitting merge requests and reportin
 ## GitHub Stars
 
 [![Stargazers](https://starchart.cc/orzkratos/authkratos.svg?variant=adaptive)](https://starchart.cc/orzkratos/authkratos)
-

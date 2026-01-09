@@ -28,31 +28,45 @@ import (
 	"golang.org/x/exp/maps"
 )
 
+// Config holds authentication middleware configuration
+// Includes route scope, token map, and enabled token types
+//
+// Config 认证中间件配置
+// 包含路由范围、令牌映射和启用的令牌类型
 type Config struct {
-	routeScope       *authkratosroutes.RouteScope
-	authTokens       map[string]string
-	fieldName        string
-	apmSpanName      string // APM span 名称，为空时不启动 APM 追踪
-	apmMatchSuffix   string // APM match span 后缀，默认为 -match
-	debugMode        bool
-	enableSimpleType bool // Enable simple token type // 启用简单令牌类型
-	enableBearerType bool // Enable Bearer token type // 启用 Bearer 令牌类型
-	enableBase64Type bool // Enable Base64 Basic Auth type // 启用 Base64 Basic Auth 类型
+	routeScope     *authkratosroutes.RouteScope // Route scope config // 路由范围配置
+	authTokens     map[string]string            // Username to token map // 用户名到令牌的映射
+	fieldName      string                       // Request field name // 请求头字段名
+	apmSpanName    string                       // APM span name, blank disables APM // APM span 名称，空值禁用 APM
+	apmMatchSuffix string                       // APM match span suffix // APM match span 后缀
+	debugMode      bool                         // Debug mode flag // 调试模式标志
+	simpleEnable   bool                         // Enable simple token type // 启用简单令牌类型
+	bearerEnable   bool                         // Enable Bearer token type // 启用 Bearer 令牌类型
+	base64Enable   bool                         // Enable Base64 Basic Auth type // 启用 Base64 Basic Auth 类型
 }
 
+// NewConfig creates a new Config with route scope and token map
+// Default: field name "Authorization", APM disabled, debug mode from package setting
+//
+// NewConfig 创建新的配置，包含路由范围和令牌映射
+// 默认字段名 "Authorization"，APM 禁用，调试模式从全局设置获取
 func NewConfig(
 	routeScope *authkratosroutes.RouteScope,
 	authTokens map[string]string,
 ) *Config {
 	return &Config{
-		// 注意配置时不要配置非标准的字段名
-		// Nginx 默认忽略带有下划线的 headers 信息，除非配置 underscores_in_headers on
-		// 因此在开发中建议不要配置含特殊字符的字段名
+		// Avoid non-standard field names
+		// Nginx ignores names with underscores unless underscores_in_headers is on
+		// Recommend avoiding names with non-standard chars
+		//
+		// 避免非标准字段名
+		// Nginx 默认忽略带下划线的 headers，除非配置 underscores_in_headers on
+		// 建议不用含特殊字符的字段名
 		routeScope:     routeScope,
 		authTokens:     authTokens,
 		fieldName:      "Authorization",
 		apmSpanName:    "",
-		apmMatchSuffix: "-match", // 默认后缀
+		apmMatchSuffix: "-match", // Default suffix // 默认后缀
 		debugMode:      authkratos.GetDebugMode(),
 	}
 }
@@ -78,6 +92,11 @@ func (c *Config) GetFieldName() string {
 	return c.fieldName
 }
 
+// WithDebugMode sets debug mode flag
+// When enabled, outputs detailed auth logs
+//
+// WithDebugMode 设置调试模式标志
+// 启用时输出详细的认证日志
 func (c *Config) WithDebugMode(debugMode bool) *Config {
 	c.debugMode = debugMode
 	return c
@@ -93,7 +112,7 @@ func (c *Config) WithDefaultApmSpanName() *Config {
 }
 
 // WithApmSpanName sets APM span name
-// Empty value disables APM tracing
+// Blank value disables APM tracing
 //
 // WithApmSpanName 设置 APM span 名称
 // 为空时不启动 APM 追踪
@@ -112,73 +131,94 @@ func (c *Config) WithApmMatchSuffix(apmMatchSuffix string) *Config {
 	return c
 }
 
-// WithEnableSimpleType enables simple token type authentication
+// WithSimpleEnable enables simple token type authentication
 // Token format: "secret-token-123"
 //
-// WithEnableSimpleType 启用简单令牌类型认证
+// WithSimpleEnable 启用简单令牌类型认证
 // 令牌格式: "secret-token-123"
-func (c *Config) WithEnableSimpleType() *Config {
-	c.enableSimpleType = true
+func (c *Config) WithSimpleEnable() *Config {
+	c.simpleEnable = true
 	return c
 }
 
-// WithEnableBearerType enables Bearer token type authentication
+// WithBearerEnable enables Bearer token type authentication
 // Token format: "Bearer secret-token-123"
 //
-// WithEnableBearerType 启用 Bearer 令牌类型认证
+// WithBearerEnable 启用 Bearer 令牌类型认证
 // 令牌格式: "Bearer secret-token-123"
-func (c *Config) WithEnableBearerType() *Config {
-	c.enableBearerType = true
+func (c *Config) WithBearerEnable() *Config {
+	c.bearerEnable = true
 	return c
 }
 
-// WithEnableBase64Type enables Base64 Basic Auth type authentication
+// WithBase64Enable enables Base64 Basic Auth type authentication
 // Token format: "Basic base64(username:password)"
 //
-// WithEnableBase64Type 启用 Base64 Basic Auth 类型认证
+// WithBase64Enable 启用 Base64 Basic Auth 类型认证
 // 令牌格式: "Basic base64(username:password)"
-func (c *Config) WithEnableBase64Type() *Config {
-	c.enableBase64Type = true
+func (c *Config) WithBase64Enable() *Config {
+	c.base64Enable = true
 	return c
 }
 
-func (c *Config) GetAuthTokens() map[string]string {
+// GetSimpleTokens returns username to token map
+// Returns nil if Config is nil
+//
+// GetSimpleTokens 返回用户名到令牌的映射
+// Config 为 nil 时返回 nil
+func (c *Config) GetSimpleTokens() map[string]string {
 	if c != nil {
 		return c.authTokens
 	}
 	return nil
 }
 
-func (c *Config) CreateToken(username string) string {
-	password, ok := c.GetAuthTokens()[username]
-	must.TRUE(ok)
-	must.Nice(password)
-	return utils.BasicAuth(username, password)
-}
-
-func (c *Config) GetOneToken() string {
-	return c.CreateToken(utils.Sample(maps.Keys(c.GetAuthTokens())))
-}
-
-func (c *Config) GetMapTokens() map[string]string {
-	var res = make(map[string]string, len(c.GetAuthTokens()))
-	for username, password := range c.GetAuthTokens() {
+// GetBase64Tokens returns username to Basic Auth token map
+//
+// GetBase64Tokens 返回用户名到 Basic Auth 令牌的映射
+func (c *Config) GetBase64Tokens() map[string]string {
+	var res = make(map[string]string, len(c.GetSimpleTokens()))
+	for username, password := range c.GetSimpleTokens() {
 		res[username] = utils.BasicAuth(username, password)
 	}
 	return res
 }
 
+// LookupBase64Token picks Basic Auth token by username
+// Panics if username not found in token map
+//
+// LookupBase64Token 根据用户名挑选 Basic Auth 令牌
+// 用户名不存在时 panic
+func (c *Config) LookupBase64Token(username string) string {
+	password, ok := c.GetSimpleTokens()[username]
+	must.TRUE(ok)
+	must.Nice(password)
+	return utils.BasicAuth(username, password)
+}
+
+// RandomBase64Token returns a random Basic Auth token from token map
+//
+// RandomBase64Token 从令牌映射中随机返回一个 Basic Auth 令牌
+func (c *Config) RandomBase64Token() string {
+	return c.LookupBase64Token(utils.Sample(maps.Keys(c.GetSimpleTokens())))
+}
+
+// NewMiddleware creates authentication middleware with config and logger
+// Uses selector.Server to match routes and check auth tokens
+//
+// NewMiddleware 使用配置和日志创建认证中间件
+// 使用 selector.Server 匹配路由并检查认证令牌
 func NewMiddleware(cfg *Config, logger log.Logger) middleware.Middleware {
 	slog := log.NewHelper(logger)
 	slog.Infof(
-		"auth-kratos-tokens: new middleware field-name=%v auth-tokens=%d side=%v operations=%d enable-simple=%v enable-bearer=%v enable-base64=%v",
+		"auth-kratos-tokens: new middleware field-name=%v auth-tokens=%d side=%v operations=%d simple-enable=%v bearer-enable=%v base64-enable=%v",
 		cfg.fieldName,
 		len(cfg.authTokens),
 		cfg.routeScope.Side,
 		len(cfg.routeScope.OperationSet),
-		utils.BooleanToNum(cfg.enableSimpleType),
-		utils.BooleanToNum(cfg.enableBearerType),
-		utils.BooleanToNum(cfg.enableBase64Type),
+		utils.BooleanToNum(cfg.simpleEnable),
+		utils.BooleanToNum(cfg.bearerEnable),
+		utils.BooleanToNum(cfg.base64Enable),
 	)
 	if cfg.debugMode {
 		slog.Debugf("auth-kratos-tokens: new middleware field-name=%v route-scope: %s", cfg.fieldName, neatjsons.S(cfg.routeScope))
@@ -186,11 +226,17 @@ func NewMiddleware(cfg *Config, logger log.Logger) middleware.Middleware {
 	return selector.Server(middlewareFunc(cfg, logger)).Match(matchFunc(cfg, logger)).Build()
 }
 
+// matchFunc creates route matching function
+// Returns true if operation should be authenticated
+//
+// matchFunc 创建路由匹配函数
+// 操作需要认证时返回 true
 func matchFunc(cfg *Config, logger log.Logger) selector.MatchFunc {
 	slog := log.NewHelper(logger)
 
 	return func(ctx context.Context, operation string) bool {
-		// 如果配置了 APM span 名称，则启动 APM 追踪
+		// Start APM span if APM span name is configured
+		// 配置了 APM span 名称时启动 APM 追踪
 		if cfg.apmSpanName != "" {
 			apmTx := apm.TransactionFromContext(ctx)
 			span := apmTx.StartSpan(cfg.apmSpanName+cfg.apmMatchSuffix, "app", nil)
@@ -209,33 +255,36 @@ func matchFunc(cfg *Config, logger log.Logger) selector.MatchFunc {
 	}
 }
 
+// middlewareFunc creates authentication middleware implementation
+// Validates tokens and injects username into context
+//
+// middlewareFunc 创建实际的认证中间件
+// 验证令牌并将用户名注入 context
 func middlewareFunc(cfg *Config, logger log.Logger) middleware.Middleware {
 	slog := log.NewHelper(logger)
 
-	// Build token maps based on enabled types
-	// Initialize blank maps as default
-	//
-	// 根据启用的类型构建令牌映射
-	// 默认初始化为空 map 以确保安全
+	// Build token maps based on enabled types, init blank maps as default
+	// 根据启用的类型构建令牌映射，默认初始化空 map
 	mapBox := &authTokenMapBox{
-		simpleTypeToUsername: make(map[string]string),
-		bearerTypeToUsername: make(map[string]string),
-		base64TypeToUsername: make(map[string]string),
+		simpleTokenMap: make(map[string]string),
+		bearerTokenMap: make(map[string]string),
+		base64TokenMap: make(map[string]string),
 	}
-	if cfg.enableSimpleType {
-		mapBox.simpleTypeToUsername = buildSimpleTokenToUsername(cfg.authTokens)
+	if cfg.simpleEnable {
+		mapBox.simpleTokenMap = newSimpleTokenMap(cfg.authTokens)
 	}
-	if cfg.enableBearerType {
-		mapBox.bearerTypeToUsername = buildBearerTokenToUsername(cfg.authTokens)
+	if cfg.bearerEnable {
+		mapBox.bearerTokenMap = newBearerTokenMap(cfg.authTokens)
 	}
-	if cfg.enableBase64Type {
-		mapBox.base64TypeToUsername = buildBase64TokenToUsername(cfg.authTokens)
+	if cfg.base64Enable {
+		mapBox.base64TokenMap = newBase64TokenMap(cfg.authTokens)
 	}
 
 	return func(handleFunc middleware.Handler) middleware.Handler {
 		return func(ctx context.Context, req interface{}) (interface{}, error) {
 			if tsp, ok := transport.FromServerContext(ctx); ok {
-				// 如果配置了 APM span 名称，则启动 APM 追踪
+				// Start APM span if APM span name is configured
+				// 配置了 APM span 名称时启动 APM 追踪
 				if cfg.apmSpanName != "" {
 					apmTx := apm.TransactionFromContext(ctx)
 					span := apmTx.StartSpan(cfg.apmSpanName, "app", nil)
@@ -256,9 +305,12 @@ func middlewareFunc(cfg *Config, logger log.Logger) middleware.Middleware {
 					}
 					return nil, erk
 				}
-				// 认证成功，将用户名注入到 context 中
-				// 后续业务可通过 GetUsername(ctx) 获取当前用户名
-				ctx = SetUsernameIntoContext(ctx, username)
+				// Auth success, inject username into context
+				// Business code can get username via GetUsername(ctx)
+				//
+				// 认证成功，将用户名注入 context
+				// 业务代码可通过 GetUsername(ctx) 获取用户名
+				ctx = SetUsername(ctx, username)
 				return handleFunc(ctx, req)
 			}
 			return nil, errors.Unauthorized("UNAUTHORIZED", "auth-kratos-tokens: wrong context")
@@ -266,27 +318,32 @@ func middlewareFunc(cfg *Config, logger log.Logger) middleware.Middleware {
 	}
 }
 
+// checkAuthToken validates token against enabled token maps
+// Returns username on success, error on failure
+//
+// checkAuthToken 根据启用的令牌映射验证令牌
+// 成功返回用户名，失败返回错误
 func checkAuthToken(cfg *Config, mapBox *authTokenMapBox, token string, slog *log.Helper) (string, *errors.Error) {
-	if !cfg.enableSimpleType && !cfg.enableBearerType && !cfg.enableBase64Type {
+	if !cfg.simpleEnable && !cfg.bearerEnable && !cfg.base64Enable {
 		if cfg.debugMode {
 			slog.Debugf("auth-kratos-tokens: check token (no token types enabled, must enable at least one)")
 		}
 		return "", errors.Unauthorized("UNAUTHORIZED", "auth-kratos-tokens: no token type enabled")
 	}
 
-	if username, ok := mapBox.simpleTypeToUsername[token]; ok {
+	if username, ok := mapBox.simpleTokenMap[token]; ok {
 		if cfg.debugMode {
 			slog.Debugf("auth-kratos-tokens: simple-type request username:%v quick pass", username)
 		}
 		return username, nil
 	}
-	if username, ok := mapBox.bearerTypeToUsername[token]; ok {
+	if username, ok := mapBox.bearerTokenMap[token]; ok {
 		if cfg.debugMode {
 			slog.Debugf("auth-kratos-tokens: bearer-type request username:%v quick pass", username)
 		}
 		return username, nil
 	}
-	if username, ok := mapBox.base64TypeToUsername[token]; ok {
+	if username, ok := mapBox.base64TokenMap[token]; ok {
 		if cfg.debugMode {
 			slog.Debugf("auth-kratos-tokens: base64-type request username:%v quick pass", username)
 		}
@@ -295,13 +352,23 @@ func checkAuthToken(cfg *Config, mapBox *authTokenMapBox, token string, slog *lo
 	return "", errors.Unauthorized("UNAUTHORIZED", "auth-kratos-tokens: auth-token mismatch")
 }
 
+// authTokenMapBox holds pre-built token to username maps
+// Each map type is built based on enabled token types
+//
+// authTokenMapBox 保存预构建的令牌到用户名映射
+// 每种映射根据启用的令牌类型构建
 type authTokenMapBox struct {
-	simpleTypeToUsername map[string]string
-	bearerTypeToUsername map[string]string
-	base64TypeToUsername map[string]string
+	simpleTokenMap map[string]string // Token -> username // 令牌 -> 用户名
+	bearerTokenMap map[string]string // "Bearer token" -> username // "Bearer 令牌" -> 用户名
+	base64TokenMap map[string]string // "Basic base64" -> username // "Basic base64" -> 用户名
 }
 
-func buildSimpleTokenToUsername(usernameToTokenMap map[string]string) map[string]string {
+// newSimpleTokenMap builds simple token to username map
+// Maps raw token to username
+//
+// newSimpleTokenMap 构建简单令牌到用户名的映射
+// 将原始令牌映射到用户名
+func newSimpleTokenMap(usernameToTokenMap map[string]string) map[string]string {
 	simpleTypeToUsername := make(map[string]string, len(usernameToTokenMap))
 	for username, token := range usernameToTokenMap {
 		simpleTypeToUsername[token] = username
@@ -309,7 +376,12 @@ func buildSimpleTokenToUsername(usernameToTokenMap map[string]string) map[string
 	return simpleTypeToUsername
 }
 
-func buildBearerTokenToUsername(usernameToTokenMap map[string]string) map[string]string {
+// newBearerTokenMap builds Bearer token to username map
+// Maps "Bearer {token}" to username
+//
+// newBearerTokenMap 构建 Bearer 令牌到用户名的映射
+// 将 "Bearer {令牌}" 映射到用户名
+func newBearerTokenMap(usernameToTokenMap map[string]string) map[string]string {
 	bearerTypeToUsername := make(map[string]string, len(usernameToTokenMap))
 	for username, token := range usernameToTokenMap {
 		bearerTypeToUsername["Bearer "+token] = username
@@ -317,7 +389,12 @@ func buildBearerTokenToUsername(usernameToTokenMap map[string]string) map[string
 	return bearerTypeToUsername
 }
 
-func buildBase64TokenToUsername(usernameToTokenMap map[string]string) map[string]string {
+// newBase64TokenMap builds Base64 Basic Auth token to username map
+// Maps "Basic {base64(username:password)}" to username
+//
+// newBase64TokenMap 构建 Base64 Basic Auth 令牌到用户名的映射
+// 将 "Basic {base64(用户名:密码)}" 映射到用户名
+func newBase64TokenMap(usernameToTokenMap map[string]string) map[string]string {
 	base64TypeToUsername := make(map[string]string, len(usernameToTokenMap))
 	for username, token := range usernameToTokenMap {
 		encoded := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", username, token)))
@@ -326,23 +403,40 @@ func buildBase64TokenToUsername(usernameToTokenMap map[string]string) map[string
 	return base64TypeToUsername
 }
 
+// usernameKey is context key type used to store username
+//
+// usernameKey 是用于存储用户名的 context key 类型
 type usernameKey struct{}
 
-// SetUsernameIntoContext 将用户名注入到 context 中
-// 认证成功后调用，用于在请求上下文中传递用户信息
+// SetUsernameIntoContext injects username into context
+// Use on auth success to pass username in request context
+//
+// SetUsernameIntoContext 将用户名注入 context
+// 认证成功后调用，在请求上下文中传递用户信息
 func SetUsernameIntoContext(ctx context.Context, username string) context.Context {
 	return context.WithValue(ctx, usernameKey{}, username)
 }
 
-// GetUsernameFromContext 从 context 中获取用户名
-// 返回：用户名和是否存在的标志
+// GetUsernameFromContext gets username from context
+// Returns username and existence flag
+//
+// GetUsernameFromContext 从 context 获取用户名
+// 返回用户名和是否存在的标志
 func GetUsernameFromContext(ctx context.Context) (string, bool) {
 	username, ok := ctx.Value(usernameKey{}).(string)
 	return username, ok
 }
 
-// GetUsername 从 context 中获取用户名
-// 这是 GetUsernameFromContext 的简化版本
+// SetUsername is alias to SetUsernameIntoContext
+//
+// SetUsername 是 SetUsernameIntoContext 的别名
+func SetUsername(ctx context.Context, username string) context.Context {
+	return SetUsernameIntoContext(ctx, username)
+}
+
+// GetUsername is alias to GetUsernameFromContext
+//
+// GetUsername 是 GetUsernameFromContext 的别名
 func GetUsername(ctx context.Context) (string, bool) {
 	return GetUsernameFromContext(ctx)
 }

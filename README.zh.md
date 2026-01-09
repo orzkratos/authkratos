@@ -16,6 +16,7 @@ Kratos 认证中间件集合，支持路由范围管理和 APM 追踪。
 ## 英文文档
 
 [ENGLISH README](README.md)
+
 <!-- TEMPLATE (ZH) END: LANGUAGE NAVIGATION -->
 
 ## 核心特性
@@ -181,16 +182,16 @@ matchFunc := matchkratosperiod.NewMatchFunc(cfg, logger)
 
 ## 包概览
 
-| 包名 | 用途 |
-|------|------|
-| `authkratostokens` | 预配置令牌认证，支持用户名-令牌映射 |
-| `authkratossimple` | 自定义令牌验证，灵活的认证逻辑 |
-| `ratekratoslimits` | 基于 Redis 的分布式速率限制 |
-| `passkratosrandom` | 概率性请求阻断（混沌测试） |
-| `fastkratoshandle` | 特定路由的选择性超时覆盖 |
-| `matchkratosrandom` | 随机请求采样匹配函数 |
-| `matchkratosperiod` | 周期性请求采样（每 N 个请求） |
-| `authkratosroutes` | 路由范围匹配工具包 |
+| 包名                | 用途                                |
+| ------------------- | ----------------------------------- |
+| `authkratostokens`  | 预配置令牌认证，支持用户名-令牌映射 |
+| `authkratossimple`  | 自定义令牌验证，灵活的认证逻辑      |
+| `ratekratoslimits`  | 基于 Redis 的分布式速率限制         |
+| `passkratosrandom`  | 概率性请求阻断（混沌测试）          |
+| `fastkratoshandle`  | 特定路由的选择性超时覆盖            |
+| `matchkratosrandom` | 随机请求采样匹配函数                |
+| `matchkratosperiod` | 周期性请求采样（每 N 个请求）       |
+| `authkratosroutes`  | 路由范围匹配工具包                  |
 
 ## 高级功能
 
@@ -260,13 +261,13 @@ tokens := map[string]string{
 
 // 启用需要的令牌类型（默认都关闭，需要显式启用）
 cfg := authkratostokens.NewConfig(routeScope, tokens).
-    WithEnableSimpleType().  // 启用简单格式："secret-token"
-    WithEnableBearerType().  // 启用 Bearer 格式："Bearer secret-token"
-    WithEnableBase64Type()   // 启用 Basic Auth："Basic YWxpY2U6c2VjcmV0LXRva2Vu"
+    WithSimpleEnable().  // 启用简单格式："secret-token"
+    WithBearerEnable().  // 启用 Bearer 格式："Bearer secret-token"
+    WithBase64Enable()   // 启用 Basic Auth："Basic YWxpY2U6c2VjcmV0LXRva2Vu"
 
 // 可以只启用部分类型，如只启用 Bearer：
 cfg := authkratostokens.NewConfig(routeScope, tokens).
-    WithEnableBearerType()  // 仅接受 "Bearer secret-token" 格式
+    WithBearerEnable()  // 仅接受 "Bearer secret-token" 格式
 
 // 三种令牌格式：
 // 1. 简单格式："secret-token"
@@ -368,4 +369,3 @@ MIT 许可证 - 详见 [LICENSE](LICENSE)。
 ## GitHub 标星点赞
 
 [![标星点赞](https://starchart.cc/orzkratos/authkratos.svg?variant=adaptive)](https://starchart.cc/orzkratos/authkratos)
-
